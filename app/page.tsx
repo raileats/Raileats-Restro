@@ -23,6 +23,9 @@ export default function Home() {
   .eq("RestroLoginMobile", mobile)
   .eq("RestroPassword", password)
   .single();
+console.log(data);
+console.log(error);
+    
     setLoading(false);
 
     if (error || !data) {

@@ -1,147 +1,304 @@
 "use client";
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
-export default function Home() {
-  const [mobile, setMobile] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (!mobile || !password) {
-      alert("Please enter mobile and password");
-      return;
-    }
-
-    setLoading(true);
-
-    const { data, error } = await supabase
-  .from("RestroMaster")
-  .select("*")
-  .eq("RestroLoginMobile", mobile)
-  .eq("RestroPassword", password)
-  .single();
-console.log(data);
-console.log(error);
-    
-    setLoading(false);
-
-    if (error || !data) {
-      alert("Invalid Credentials");
-      return;
-    }
-
-    localStorage.setItem(
-  "restro",
-  JSON.stringify(data)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-window.location.href = "/orders";
+export default function OrdersPage() {
+  const router = useRouter();
 
-    // NEXT STEP
-    // dashboard redirect yaha hoga
-  };
+  const [restro, setRestro] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("In Kitchen");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    try {
+      const stored = localStorage.getItem("restro");
+
+      if (!stored) {
+        router.push("/");
+        return;
+      }
+
+      const restroData = JSON.parse(stored);
+
+      setRestro(restroData);
+
+      // ===============================
+      // FETCH ORDERS FROM SUPABASE
+      // ===============================
+
+      const { data, error } = await supabase
+        .from("Orders")
+        .select("*")
+        .eq("OutletID", restroData.RestroCode)
+        .order("CreatedAt", { ascending: false });
+
+      console.log(data);
+
+      if (!error && data) {
+        setOrders(data);
+      }
+
+      setLoading(false);
+
+    } catch (err) {
+      console.log(err);
+      setLoading(false);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("restro");
+    router.push("/");
+  }
+
+  // ====================================
+  // FILTER ORDERS
+  // ====================================
+
+  const filteredOrders = orders.filter((item) => {
+
+    const status =
+      item.OrderStatus ||
+      item.status ||
+      item.order_status;
+
+    return status === activeTab;
+  });
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6]">
-      {/* HEADER */}
-      <div className="h-[74px] bg-white border-b flex items-center px-16">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-[#f3f4f6] flex">
+
+      {/* SIDEBAR */}
+
+      <div className="w-[280px] bg-white border-r min-h-screen">
+
+        {/* HEADER */}
+
+        <div className="h-[92px] border-b flex items-center px-6 gap-4">
+
           <img
             src="/logo.png"
-            alt="RailEats"
-            className="w-[58px] h-[58px]"
+            alt="logo"
+            className="w-[52px] h-[52px]"
           />
 
-          <h1 className="text-[22px] font-semibold text-black">
-            RailEats
-          </h1>
+          <div>
+            <h1 className="text-[32px] font-bold leading-none">
+              RailEats
+            </h1>
+
+            <p className="text-gray-500">
+              Restro Panel
+            </p>
+          </div>
+        </div>
+
+        {/* MENU */}
+
+        <div className="p-4 flex flex-col gap-3">
+
+          <button className="bg-[#2f54eb] text-white h-[54px] rounded-xl text-left px-5 font-semibold text-[18px]">
+            Orders
+          </button>
+
+          <button
+            onClick={() => router.push("/profile")}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+          >
+            Restro Profile
+          </button>
+
+          <button
+            onClick={() => router.push("/delivery-settings")}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+          >
+            Delivery Settings
+          </button>
+
+          <button
+            onClick={logout}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-red-50 text-red-500 text-[18px]"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
-      {/* LOGIN */}
-      <div className="flex items-center justify-center py-20">
-        <div className="w-[440px] bg-white rounded-xl shadow-sm p-8">
-          
-          {/* LOGO */}
-          <div className="mb-6">
-            <img
-              src="/logo.png"
-              alt="RailEats"
-              className="w-[64px] h-[64px]"
-            />
+      {/* MAIN SECTION */}
+
+      <div className="flex-1 p-10">
+
+        {/* TOP HEADER */}
+
+        <div className="flex items-start justify-between mb-10">
+
+          <div>
+
+            <h1 className="text-5xl font-bold">
+              Orders
+            </h1>
+
+            <p className="text-gray-500 mt-4 text-xl">
+              Welcome {restro?.RestroName}
+            </p>
+
+            <p className="text-gray-500 text-lg mt-1">
+              Station Code : {restro?.StationCode}
+            </p>
           </div>
 
-          {/* TITLE */}
-          <h2 className="text-[38px] font-semibold text-center mb-10">
-            Restro Login
-          </h2>
+          <div className="bg-white border rounded-2xl px-8 py-5 shadow-sm">
 
-          {/* MOBILE */}
-          <div className="mb-6">
-            <label className="block text-[15px] mb-2 font-medium">
-              Mobile Number
-            </label>
+            <div className="text-gray-500 text-sm">
+              Restro Code
+            </div>
 
-            <input
-              type="text"
-              value={mobile}
-              onChange={(e) => {
-                const value = e.target.value
-                  .replace(/\D/g, "")
-                  .slice(0, 10);
-
-                setMobile(value);
-              }}
-              placeholder="Enter mobile number"
-              className="w-full h-[56px] border border-gray-300 rounded-lg px-4 text-[16px] outline-none focus:border-black"
-            />
-          </div>
-
-          {/* PASSWORD */}
-          <div className="mb-8">
-            <label className="block text-[15px] mb-2 font-medium">
-              Password
-            </label>
-
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) =>
-                  setPassword(e.target.value)
-                }
-                placeholder="Enter password"
-                className="w-full h-[56px] border border-gray-300 rounded-lg px-4 pr-12 text-[16px] outline-none focus:border-black"
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword(!showPassword)
-                }
-                className="absolute right-4 top-1/2 -translate-y-1/2"
-              >
-                👁️
-              </button>
+            <div className="text-3xl font-bold">
+              {restro?.RestroCode}
             </div>
           </div>
+        </div>
 
-          {/* BUTTON */}
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full h-[56px] bg-[#f4b400] hover:bg-[#e5aa00] text-black text-[22px] font-semibold rounded-lg transition"
-          >
-            {loading ? "Please wait..." : "Log in"}
-          </button>
+        {/* STATUS BUTTONS */}
 
-          {/* FOOTER */}
-          <p className="text-center text-gray-500 text-sm mt-6">
-            Please use your restro credentials.
-          </p>
+        <div className="flex flex-wrap gap-4 mb-8">
+
+          {[
+            "In Kitchen",
+            "Out for Delivery",
+            "Delivered",
+            "Cancelled",
+            "Not Delivered",
+            "Bad Delivery",
+          ].map((status) => (
+
+            <button
+              key={status}
+              onClick={() => setActiveTab(status)}
+              className={`px-7 py-4 rounded-xl font-semibold transition ${
+                activeTab === status
+                  ? "bg-[#2f54eb] text-white"
+                  : "bg-white border"
+              }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+
+        {/* TABLE */}
+
+        <div className="bg-white rounded-2xl shadow-sm border overflow-auto">
+
+          {loading ? (
+
+            <div className="p-20 text-center text-2xl">
+              Loading...
+            </div>
+
+          ) : filteredOrders.length === 0 ? (
+
+            <div className="p-20 text-center">
+
+              <h2 className="text-4xl font-bold mb-4">
+                No Orders Yet
+              </h2>
+
+              <p className="text-gray-500 text-lg">
+                Orders for this restro will appear here.
+              </p>
+            </div>
+
+          ) : (
+
+            <table className="w-full">
+
+              <thead className="bg-gray-50 border-b">
+
+                <tr className="text-left">
+
+                  <th className="p-5">Order ID</th>
+                  <th className="p-5">Outlet</th>
+                  <th className="p-5">Train</th>
+                  <th className="p-5">Coach</th>
+                  <th className="p-5">Seat</th>
+                  <th className="p-5">Customer</th>
+                  <th className="p-5">Mobile</th>
+                  <th className="p-5">Date</th>
+                  <th className="p-5">Time</th>
+                  <th className="p-5">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {filteredOrders.map((item, index) => (
+
+                  <tr
+                    key={index}
+                    className="border-b hover:bg-gray-50"
+                  >
+
+                    <td className="p-5 font-medium">
+                      {item.OrderID}
+                    </td>
+
+                    <td className="p-5">
+                      {item.OutletName}
+                    </td>
+
+                    <td className="p-5">
+                      {item.TrainNo}
+                    </td>
+
+                    <td className="p-5">
+                      {item.Coach}
+                    </td>
+
+                    <td className="p-5">
+                      {item.Seat}
+                    </td>
+
+                    <td className="p-5">
+                      {item.CustomerName}
+                    </td>
+
+                    <td className="p-5">
+                      {item.CustomerMobile}
+                    </td>
+
+                    <td className="p-5">
+                      {item.DeliveryDate}
+                    </td>
+
+                    <td className="p-5">
+                      {item.DeliveryTime}
+                    </td>
+
+                    <td className="p-5">
+
+                      <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
+                        {item.OrderStatus}
+                      </span>
+
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

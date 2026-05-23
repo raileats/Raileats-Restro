@@ -1,348 +1,451 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function OrdersPage() {
-  const router = useRouter();
-
   const [restro, setRestro] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("In Kitchen");
   const [loading, setLoading] = useState(true);
 
+  const [activeTab, setActiveTab] =
+    useState("In Kitchen");
+
   useEffect(() => {
-    loadData();
+    const storedRestro =
+      localStorage.getItem("restro");
+
+    if (!storedRestro) {
+      window.location.href = "/";
+      return;
+    }
+
+    const parsed = JSON.parse(storedRestro);
+
+    setRestro(parsed);
+
+    fetchOrders(parsed.RestroCode);
   }, []);
 
-  async function loadData() {
-    try {
-      const stored = localStorage.getItem("restro");
+  const fetchOrders = async (
+    restroCode: number
+  ) => {
+    setLoading(true);
 
-      if (!stored) {
-        router.push("/");
-        return;
-      }
+    const { data, error } = await supabase
+      .from("Orders")
+      .select("*")
+      .eq("OutletID", restroCode)
+      .order("created_at", {
+        ascending: false,
+      });
 
-      const restroData = JSON.parse(stored);
-
-      setRestro(restroData);
-
-      // FETCH ORDERS
-
-      const { data, error } = await supabase
-        .from("Orders")
-        .select("*")
-        .eq("RestroCode", restroData.RestroCode)
-        .order("CreatedAt", { ascending: false });
-
-      console.log(data);
-      console.log(error);
-
-      if (!error && data) {
-        setOrders(data);
-      }
-
-      setLoading(false);
-
-    } catch (err) {
-      console.log(err);
-      setLoading(false);
+    if (!error && data) {
+      setOrders(data);
     }
-  }
 
-  function logout() {
-    localStorage.removeItem("restro");
-    router.push("/");
-  }
+    setLoading(false);
+  };
 
-  // FILTER ORDERS
+  const filteredOrders = orders.filter(
+    (item) => {
+      const status = item.Status
+        ?.toLowerCase()
+        .trim();
 
-  const filteredOrders = orders.filter((item) => {
+      if (
+        activeTab === "In Kitchen" &&
+        status === "inkitchen"
+      ) {
+        return true;
+      }
 
-  const status = item.Status?.toLowerCase().trim();
+      if (
+        activeTab === "Out for Delivery" &&
+        status === "outfordelivery"
+      ) {
+        return true;
+      }
 
-  if (
-  activeTab === "In Kitchen" &&
-  status === "inkitchen"
-) {
-  return true;
-}
+      if (
+        activeTab === "Delivered" &&
+        status === "delivered"
+      ) {
+        return true;
+      }
 
-  if (
-    activeTab === "Out for Delivery" &&
-    status === "outfordelivery"
-  ) {
-    return true;
-  }
+      if (
+        activeTab === "Cancelled" &&
+        status === "cancelled"
+      ) {
+        return true;
+      }
 
-  if (
-    activeTab === "Delivered" &&
-    status === "delivered"
-  ) {
-    return true;
-  }
+      if (
+        activeTab === "Not Delivered" &&
+        status === "notdelivered"
+      ) {
+        return true;
+      }
 
-  if (
-    activeTab === "Cancelled" &&
-    status === "cancelled"
-  ) {
-    return true;
-  }
+      if (
+        activeTab === "Bad Delivery" &&
+        status === "baddelivery"
+      ) {
+        return true;
+      }
 
-  if (
-    activeTab === "Not Delivered" &&
-    status === "notdelivered"
-  ) {
-    return true;
-  }
+      return false;
+    }
+  );
 
-  if (
-    activeTab === "Bad Delivery" &&
-    status === "baddelivery"
-  ) {
-    return true;
-  }
-
-  return false;
-});
+  const tabs = [
+    "In Kitchen",
+    "Out for Delivery",
+    "Delivered",
+    "Cancelled",
+    "Not Delivered",
+    "Bad Delivery",
+  ];
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] flex">
+    <div className="min-h-screen bg-[#f5f7fb]">
 
-      {/* SIDEBAR */}
+      {/* MOBILE HEADER */}
+      <div className="lg:hidden sticky top-0 z-50 bg-white border-b px-4 py-3 flex items-center justify-between">
 
-      <div className="w-[280px] bg-white border-r min-h-screen">
-
-        {/* HEADER */}
-
-        <div className="h-[92px] border-b flex items-center px-6 gap-4">
-
+        <div className="flex items-center gap-3">
           <img
             src="/logo.png"
-            alt="logo"
-            className="w-[52px] h-[52px]"
+            className="w-10 h-10"
           />
 
           <div>
-
-            <h1 className="text-[32px] font-bold leading-none">
+            <h1 className="font-bold text-lg leading-none">
               RailEats
             </h1>
 
-            <p className="text-gray-500">
+            <p className="text-xs text-gray-500">
               Restro Panel
             </p>
-
           </div>
         </div>
 
-        {/* MENU */}
-
-        <div className="p-4 flex flex-col gap-3">
-
-          <button className="bg-[#2f54eb] text-white h-[54px] rounded-xl text-left px-5 font-semibold text-[18px]">
-            Orders
-          </button>
-
-          <button
-            onClick={() => router.push("/profile")}
-            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
-          >
-            Restro Profile
-          </button>
-
-          <button
-            onClick={() => router.push("/delivery-settings")}
-            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
-          >
-            Delivery Settings
-          </button>
-
-          <button
-            onClick={logout}
-            className="h-[54px] rounded-xl text-left px-5 hover:bg-red-50 text-red-500 text-[18px]"
-          >
-            Logout
-          </button>
-
+        <div className="bg-[#2f54eb] text-white px-3 py-2 rounded-xl text-sm font-semibold">
+          {restro?.RestroCode}
         </div>
       </div>
 
-      {/* MAIN */}
+      <div className="flex">
 
-      <div className="flex-1 p-10">
+        {/* SIDEBAR */}
+        <div className="hidden lg:flex w-[250px] min-h-screen bg-white border-r flex-col">
 
-        {/* TOP */}
+          <div className="p-6 border-b">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.png"
+                className="w-12 h-12"
+              />
 
-        <div className="flex items-start justify-between mb-10">
+              <div>
+                <h1 className="text-3xl font-bold">
+                  RailEats
+                </h1>
 
-          <div>
+                <p className="text-gray-500">
+                  Restro Panel
+                </p>
+              </div>
+            </div>
+          </div>
 
-            <h1 className="text-5xl font-bold">
+          <div className="p-4 flex flex-col gap-3">
+
+            <Link
+              href="/orders"
+              className="bg-[#2f54eb] text-white px-5 py-4 rounded-2xl font-semibold"
+            >
+              Orders
+            </Link>
+
+            <Link
+              href="/profile"
+              className="px-5 py-4 rounded-2xl hover:bg-gray-100 font-medium"
+            >
+              Restro Profile
+            </Link>
+
+            <Link
+              href="/delivery-settings"
+              className="px-5 py-4 rounded-2xl hover:bg-gray-100 font-medium"
+            >
+              Delivery Settings
+            </Link>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem(
+                  "restro"
+                );
+
+                window.location.href = "/";
+              }}
+              className="text-left px-5 py-4 text-red-600 font-medium"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {/* MAIN */}
+        <div className="flex-1">
+
+          {/* DESKTOP HEADER */}
+          <div className="hidden lg:flex items-center justify-between px-10 py-8">
+
+            <div>
+              <h1 className="text-5xl font-bold">
+                Orders
+              </h1>
+
+              <p className="text-2xl text-gray-600 mt-4">
+                Welcome{" "}
+                {restro?.RestroName}
+              </p>
+
+              <p className="text-lg text-gray-500 mt-1">
+                Station Code :{" "}
+                {restro?.StationCode}
+              </p>
+            </div>
+
+            <div className="bg-white border rounded-3xl px-8 py-5 text-center shadow-sm">
+              <p className="text-gray-500">
+                Restro Code
+              </p>
+
+              <h2 className="text-5xl font-bold">
+                {restro?.RestroCode}
+              </h2>
+            </div>
+          </div>
+
+          {/* MOBILE INFO */}
+          <div className="lg:hidden px-4 pt-4">
+
+            <h1 className="text-3xl font-bold">
               Orders
             </h1>
 
-            <p className="text-gray-500 mt-4 text-xl">
-              Welcome {restro?.RestroName}
+            <p className="text-lg text-gray-600 mt-2">
+              {restro?.RestroName}
             </p>
 
-            <p className="text-gray-500 text-lg mt-1">
-              Station Code : {restro?.StationCode}
+            <p className="text-sm text-gray-500">
+              Station :{" "}
+              {restro?.StationCode}
             </p>
-
           </div>
 
-          <div className="bg-white border rounded-2xl px-8 py-5 shadow-sm">
+          {/* TABS */}
+          <div className="px-4 lg:px-10 mt-5">
 
-            <div className="text-gray-500 text-sm">
-              Restro Code
+            <div className="flex gap-3 overflow-x-auto pb-2">
+
+              {tabs.map((tab) => (
+
+                <button
+                  key={tab}
+                  onClick={() =>
+                    setActiveTab(tab)
+                  }
+                  className={`whitespace-nowrap px-5 py-3 rounded-2xl border font-semibold transition ${
+                    activeTab === tab
+                      ? "bg-[#2f54eb] text-white border-[#2f54eb]"
+                      : "bg-white"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div className="text-3xl font-bold">
-              {restro?.RestroCode}
-            </div>
+          {/* ORDERS */}
+          <div className="px-4 lg:px-10 py-6">
 
+            {loading ? (
+
+              <div className="bg-white rounded-3xl p-20 text-center shadow-sm">
+                Loading...
+              </div>
+
+            ) : filteredOrders.length ===
+              0 ? (
+
+              <div className="bg-white rounded-3xl p-16 text-center shadow-sm">
+
+                <h2 className="text-3xl font-bold">
+                  No Orders Yet
+                </h2>
+
+                <p className="text-gray-500 mt-3">
+                  Orders for this restro
+                  will appear here.
+                </p>
+              </div>
+
+            ) : (
+
+              <div className="flex flex-col gap-4">
+
+                {filteredOrders.map(
+                  (item, index) => (
+
+                    <div
+                      key={index}
+                      className="bg-white rounded-3xl p-5 shadow-sm"
+                    >
+
+                      <div className="flex items-start justify-between">
+
+                        <div>
+
+                          <h2 className="font-bold text-lg">
+                            {
+                              item.OrderID
+                            }
+                          </h2>
+
+                          <p className="text-gray-500 text-sm mt-1">
+                            {
+                              item.OutletName
+                            }
+                          </p>
+                        </div>
+
+                        <span className="bg-[#2f54eb] text-white text-xs px-4 py-2 rounded-xl">
+                          {item.Status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-5 text-sm">
+
+                        <div>
+                          <p className="text-gray-500">
+                            Train
+                          </p>
+
+                          <p className="font-semibold">
+                            {
+                              item.TrainNo
+                            }
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">
+                            Coach
+                          </p>
+
+                          <p className="font-semibold">
+                            {item.Coach}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">
+                            Seat
+                          </p>
+
+                          <p className="font-semibold">
+                            {item.Seat}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">
+                            Mobile
+                          </p>
+
+                          <p className="font-semibold">
+                            {
+                              item.CustomerMobile
+                            }
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">
+                            Date
+                          </p>
+
+                          <p className="font-semibold">
+                            {
+                              item.DeliveryDate
+                            }
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-gray-500">
+                            Time
+                          </p>
+
+                          <p className="font-semibold">
+                            {
+                              item.DeliveryTime
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 pt-4 border-t">
+
+                        <p className="text-gray-500 text-sm">
+                          Customer
+                        </p>
+
+                        <p className="font-semibold">
+                          {
+                            item.CustomerName
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* STATUS */}
+      {/* MOBILE BOTTOM MENU */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3 z-50">
 
-        <div className="flex flex-wrap gap-4 mb-8">
+        <Link
+          href="/orders"
+          className="text-[#2f54eb] font-semibold text-sm"
+        >
+          Orders
+        </Link>
 
-          {[
-            "In Kitchen",
-            "Out for Delivery",
-            "Delivered",
-            "Cancelled",
-            "Not Delivered",
-            "Bad Delivery",
-          ].map((status) => (
+        <Link
+          href="/profile"
+          className="text-gray-600 text-sm"
+        >
+          Profile
+        </Link>
 
-            <button
-              key={status}
-              onClick={() => setActiveTab(status)}
-              className={`px-7 py-4 rounded-xl font-semibold transition ${
-                activeTab === status
-                  ? "bg-[#2f54eb] text-white"
-                  : "bg-white border"
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-
-        {/* TABLE */}
-
-        <div className="bg-white rounded-2xl shadow-sm border overflow-auto">
-
-          {loading ? (
-
-            <div className="p-20 text-center text-2xl">
-              Loading...
-            </div>
-
-          ) : filteredOrders.length === 0 ? (
-
-            <div className="p-20 text-center">
-
-              <h2 className="text-4xl font-bold mb-4">
-                No Orders Yet
-              </h2>
-
-              <p className="text-gray-500 text-lg">
-                Orders for this restro will appear here.
-              </p>
-
-            </div>
-
-          ) : (
-
-            <table className="w-full">
-
-              <thead className="bg-gray-50 border-b">
-
-                <tr className="text-left">
-
-                  <th className="p-5">Order ID</th>
-                  <th className="p-5">Outlet</th>
-                  <th className="p-5">Train</th>
-                  <th className="p-5">Coach</th>
-                  <th className="p-5">Seat</th>
-                  <th className="p-5">Customer</th>
-                  <th className="p-5">Mobile</th>
-                  <th className="p-5">Date</th>
-                  <th className="p-5">Time</th>
-                  <th className="p-5">Status</th>
-
-                </tr>
-              </thead>
-
-              <tbody>
-
-                {filteredOrders.map((item, index) => (
-
-                  <tr
-                    key={index}
-                    className="border-b hover:bg-gray-50"
-                  >
-
-                    <td className="p-5 font-medium">
-                      {item.OrderId}
-                    </td>
-
-                    <td className="p-5">
-                      {item.RestroName}
-                    </td>
-
-                    <td className="p-5">
-                      {item.TrainNumber}
-                    </td>
-
-                    <td className="p-5">
-                      {item.Coach}
-                    </td>
-
-                    <td className="p-5">
-                      {item.Seat}
-                    </td>
-
-                    <td className="p-5">
-                      {item.CustomerName}
-                    </td>
-
-                    <td className="p-5">
-                      {item.CustomerMobile}
-                    </td>
-
-                    <td className="p-5">
-                      {item.DeliveryDate}
-                    </td>
-
-                    <td className="p-5">
-                      {item.DeliveryTime}
-                    </td>
-
-                    <td className="p-5">
-
-                      <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
-                        {item.Status}
-                      </span>
-
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <Link
+          href="/delivery-settings"
+          className="text-gray-600 text-sm"
+        >
+          Settings
+        </Link>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,6 +11,7 @@ const supabase = createClient(
 
 export default function OrdersPage() {
   const router = useRouter();
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   const [restro, setRestro] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -56,7 +57,17 @@ export default function OrdersPage() {
     router.push("/");
   }
 
-  // FILTER ORDERS ACCORDING TO ACTIVE STATUS PILL
+  // Horizontal Tab Scroll Functions
+  const scrollTabs = (direction: "left" | "right") => {
+    if (tabsContainerRef.current) {
+      const scrollAmount = 160;
+      tabsContainerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const filteredOrders = orders.filter((item) => {
     const status = item.Status?.toLowerCase().trim();
     if (activeTab === "In Kitchen" && status === "inkitchen") return true;
@@ -69,12 +80,12 @@ export default function OrdersPage() {
   });
 
   return (
-    <div className="h-[100dvh] max-w-md mx-auto flex flex-col bg-white overflow-hidden relative shadow-2xl border-x border-gray-100">
+    <div className="h-[100dvh] max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-pan-y">
       
-      {/* 1. APP HEADER */}
-      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+      {/* 1. FIXED TOP APP HEADER */}
+      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm">
+          <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
             <img 
               src="/logo.png" 
               alt="logo" 
@@ -83,14 +94,14 @@ export default function OrdersPage() {
             />
             RE
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">RailEats</h1>
-            <p className="text-xs text-gray-500 font-semibold truncate max-w-[180px]">{restro?.RestroName || "Mizaz E Bhopal"}</p>
+            <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">{restro?.RestroName || "Mizaz E Bhopal"}</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2.5">
-          <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[28px] text-center">
             {filteredOrders.length}
           </div>
           <button className="relative w-9 h-9 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-base">
@@ -100,84 +111,108 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      {/* TABS & META WRAPPER */}
-      <div className="bg-white flex-shrink-0 pt-3">
+      {/* FIXED META & NAVIGATION ARROW TABS CONTROLLER */}
+      <div className="bg-white flex-shrink-0 pt-3 pb-2 border-b border-gray-100 z-40">
         {/* STATION META */}
-        <div className="px-4 mb-2">
-          <h2 className="text-2xl font-black text-gray-900 tracking-tight">Orders</h2>
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+        <div className="px-4 mb-2.5">
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Orders</h2>
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
             Station : <span className="text-[#2f54eb] font-extrabold">{restro?.StationCode || "BPL"}</span>
           </p>
         </div>
 
-        {/* HORIZONTAL STATUS FILTER TABS */}
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none snap-x">
-          {[
-            { label: "In Kitchen", icon: "🍳" },
-            { label: "Out for Delivery", icon: "🛵" },
-            { label: "Delivered", icon: "✅" },
-            { label: "Cancelled", icon: "❌" },
-            { label: "Not Delivered", icon: "⚠️" },
-            { label: "Bad Delivery", icon: "🚨" }
-          ].map((tab) => {
-            const isActive = activeTab === tab.label;
-            return (
-              <button
-                key={tab.label}
-                onClick={() => setActiveTab(tab.label)}
-                className={`whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-150 snap-ml-4 ${
-                  isActive
-                    ? "bg-[#2f54eb] text-white border-[#2f54eb] shadow-md shadow-blue-100"
-                    : "bg-white text-gray-600 border-gray-200/80 hover:bg-gray-50"
-                }`}
-              >
-                <span className="mr-1">{tab.icon}</span>
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* TABS CAROUSEL CONTAINER WITH < > ARROWS */}
+        <div className="relative flex items-center px-2">
+          {/* Left Arrow */}
+          <button 
+            onClick={() => scrollTabs("left")}
+            className="w-7 h-8 bg-gradient-to-r from-white via-white to-transparent absolute left-1 z-10 flex items-center justify-start text-gray-800 text-sm font-black active:scale-95"
+          >
+            ❮
+          </button>
+
+          {/* Horizontally Scrollable Middle Segment */}
+          <div 
+            ref={tabsContainerRef}
+            className="flex gap-2 overflow-x-auto px-6 scrollbar-none snap-x w-full scroll-smooth"
+          >
+            {[
+              { label: "In Kitchen", icon: "🍳" },
+              { label: "Out for Delivery", icon: "🛵" },
+              { label: "Delivered", icon: "✅" },
+              { label: "Cancelled", icon: "❌" },
+              { label: "Not Delivered", icon: "⚠️" },
+              { label: "Bad Delivery", icon: "🚨" }
+            ].map((tab) => {
+              const isActive = activeTab === tab.label;
+              return (
+                <button
+                  key={tab.label}
+                  onClick={() => setActiveTab(tab.label)}
+                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-150 snap-center ${
+                    isActive
+                      ? "bg-[#2f54eb] text-white border-[#2f54eb] shadow-sm shadow-blue-100"
+                      : "bg-gray-50 text-gray-600 border-gray-200/60 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="mr-1">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Arrow */}
+          <button 
+            onClick={() => scrollTabs("right")}
+            className="w-7 h-8 bg-gradient-to-l from-white via-white to-transparent absolute right-1 z-10 flex items-center justify-end text-gray-800 text-sm font-black active:scale-95"
+          >
+            ❯
+          </button>
         </div>
       </div>
 
-      {/* 2. MIDDLE ORDERS SCROLL AREA */}
-      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4">
+      {/* 2. MAIN ORDERS COMPONENT (ONLY THIS WRAPPER SCROLLS UP/DOWN) */}
+      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 scroll-smooth">
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2">
             <span className="text-2xl animate-spin">⏳</span>
             Fetching Fresh Orders...
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="py-12 text-center bg-white rounded-3xl border border-gray-100 p-6 shadow-sm my-auto flex flex-col items-center justify-center">
-            <span className="text-5xl mb-3">🍱</span>
-            <h3 className="text-base font-black text-gray-800">No Orders Present</h3>
-            <p className="text-xs text-gray-400 mt-1 font-medium max-w-[240px]">
-              Orders matching "{activeTab}" category are empty right now.
-            </p>
+          <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col items-center w-full">
+              <span className="text-5xl mb-3">🍱</span>
+              <h3 className="text-base font-black text-gray-800">No Orders Present</h3>
+              <p className="text-xs text-gray-400 mt-1 font-medium max-w-[220px]">
+                Orders matching "{activeTab}" category are empty right now.
+              </p>
+            </div>
           </div>
         ) : (
           filteredOrders.map((item, index) => (
             <div 
               key={index} 
-              className="bg-white rounded-3xl border border-gray-100 p-4 shadow-sm flex flex-col gap-3.5 relative"
+              className="bg-white rounded-3xl border border-gray-100/80 p-4 shadow-sm flex flex-col gap-3.5 relative"
             >
-              {/* Card Header */}
+              {/* Card Badge Metadata */}
               <div className="flex items-center justify-between">
                 <span className="bg-blue-50 text-[#2f54eb] font-extrabold text-[10px] px-2.5 py-1 rounded-lg tracking-wide">
-                  #{item.OrderId || "RE-20251126174731-960"}
+                  #{item.OrderId || "RE-960"}
                 </span>
                 <span className="bg-orange-50 text-orange-600 font-extrabold text-[10px] px-2.5 py-1 rounded-lg">
                   {item.Status || "Out for Delivery"}
                 </span>
               </div>
 
-              {/* Customer Primary Details */}
+              {/* Customer Core Profile */}
               <div className="flex items-center justify-between border-b border-dashed border-gray-100 pb-3">
-                <div>
-                  <h4 className="font-black text-base text-gray-900 leading-snug">
-                    {item.CustomerName || "Customer Name"}
+                <div className="min-w-0">
+                  <h4 className="font-black text-base text-gray-900 truncate max-w-[240px]">
+                    {item.CustomerName}
                   </h4>
                   <p className="text-xs font-bold text-gray-400 mt-0.5">
-                    {item.CustomerMobile || "9819876378"}
+                    {item.CustomerMobile}
                   </p>
                 </div>
                 {item.CustomerMobile && (
@@ -192,48 +227,48 @@ export default function OrdersPage() {
                 )}
               </div>
 
-              {/* Grid Logistics Mapping */}
-              <div className="grid grid-cols-2 gap-y-3.5 gap-x-2 text-xs">
+              {/* Grid Logistics Block */}
+              <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
                 <div className="flex items-start gap-2.5">
                   <span className="text-lg mt-0.5">🚂</span>
                   <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Train</p>
-                    <p className="font-black text-gray-800 text-xs mt-1">{item.TrainNumber || "12716"}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Train</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.TrainNumber}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <span className="text-lg mt-0.5">💺</span>
                   <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Coach / Seat</p>
-                    <p className="font-black text-gray-800 text-xs mt-1">{item.Coach || "B4"} / {item.Seat || "99"}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Coach/Seat</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.Coach} / {item.Seat}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <span className="text-lg mt-0.5">📅</span>
                   <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Date</p>
-                    <p className="font-black text-gray-800 text-xs mt-1">{item.DeliveryDate || "2025-11-27"}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryDate}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <span className="text-lg mt-0.5">🕒</span>
                   <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Time</p>
-                    <p className="font-black text-gray-800 text-xs mt-1">{item.DeliveryTime || "22:40:00"}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Time</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryTime}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Outlet Details & Action CTA Button */}
+              {/* Footer CTA Trigger */}
               <div className="flex items-center justify-between border-t border-gray-50 pt-3 mt-0.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 min-w-0">
                   <span className="text-sm">🏪</span>
-                  <span className="truncate max-w-[120px]">{item.RestroName || "Mizaz E Bhopal"}</span>
+                  <span className="truncate max-w-[140px]">{item.RestroName}</span>
                 </div>
-                <button className="bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-[11px] font-black text-[#2f54eb] flex items-center gap-0.5 transition">
+                <button className="bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-[11px] font-black text-[#2f54eb] flex items-center gap-0.5 transition flex-shrink-0">
                   View Details
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -246,30 +281,30 @@ export default function OrdersPage() {
       </main>
 
       {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR */}
-      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] pb-safe">
+      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
         <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
-          <span className="text-lg">📋</span>
+          <span className="text-xl">📋</span>
           <span className="text-[10px] font-black mt-1 tracking-tight">Orders</span>
         </button>
         <button 
           onClick={() => router.push("/delivery-settings")} 
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
-          <span className="text-lg">⚙️</span>
+          <span className="text-xl">⚙️</span>
           <span className="text-[10px] font-bold mt-1 tracking-tight">Settings</span>
         </button>
         <button 
           onClick={() => router.push("/profile")} 
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
-          <span className="text-lg">👤</span>
+          <span className="text-xl">👤</span>
           <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
         </button>
         <button 
           onClick={logout} 
           className="flex flex-col items-center justify-center flex-1 h-full text-red-400 hover:text-red-500 transition"
         >
-          <span className="text-lg">🚪</span>
+          <span className="text-xl">🚪</span>
           <span className="text-[10px] font-bold mt-1 tracking-tight">Logout</span>
         </button>
       </nav>

@@ -69,11 +69,11 @@ export default function OrdersPage() {
   const status = item.Status?.toLowerCase().trim();
 
   if (
-    activeTab === "In Kitchen" &&
-    (status === "booked" || status === "inkitchen")
-  ) {
-    return true;
-  }
+  activeTab === "In Kitchen" &&
+  status === "inkitchen"
+) {
+  return true;
+}
 
   if (
     activeTab === "Out for Delivery" &&

@@ -114,13 +114,11 @@ export default function DeliverySettingsPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#f5f6fb] pb-[90px]">
+  return (<div className="h-[100dvh] max-w-md mx-auto bg-[#f5f6fb] overflow-y-auto pb-[95px] relative shadow-2xl border-x border-gray-100"><div className="min-h-screen bg-[#f5f6fb] pb-[90px]">
 
       {/* HEADER */}
 
-      <div className="bg-white px-4 py-4 shadow-sm sticky top-0 z-50">
-
+      <div className="bg-white px-5 py-4 border-b border-gray-100 sticky top-0 z-40">
         <div className="flex items-center justify-between">
 
           <div className="flex items-center gap-3">
@@ -322,7 +320,7 @@ export default function DeliverySettingsPage() {
 
       {/* BOTTOM NAV */}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t h-[84px] flex items-center justify-around z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full
 
         <button
           onClick={() => router.push("/orders")}

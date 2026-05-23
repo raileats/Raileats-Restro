@@ -133,7 +133,7 @@ export default function OrdersPage() {
 
             <div>
 
-              <h1 className="text-2xl font-bold leading-none">
+              <h1 className="text-[28px] font-bold leading-none">
                 RailEats
               </h1>
 
@@ -144,13 +144,13 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          <div className="bg-[#2f54eb] text-white w-[72px] h-[72px] rounded-3xl flex flex-col items-center justify-center shadow-lg">
+          <div className="bg-[#2f54eb] text-white w-[62px] h-[62px] rounded-2xl flex flex-col items-center justify-center shadow-lg">
 
-            <div className="text-[11px] opacity-80">
+            <div className="text-[10px] opacity-80">
               Code
             </div>
 
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {restro?.RestroCode}
             </div>
 
@@ -192,17 +192,17 @@ export default function OrdersPage() {
             </button>
 
             <button
-              onClick={() => router.push("/profile")}
-              className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
-            >
-              Restro Profile
-            </button>
-
-            <button
               onClick={() => router.push("/delivery-settings")}
               className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
             >
               Delivery Settings
+            </button>
+
+            <button
+              onClick={() => router.push("/profile")}
+              className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+            >
+              Restro Profile
             </button>
 
             <button
@@ -252,21 +252,18 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          {/* MOBILE TITLE */}
+          {/* MOBILE INFO */}
 
           <div className="md:hidden mb-5">
 
-            <h1 className="text-5xl font-bold">
-              Orders
-            </h1>
-
-            <p className="text-gray-700 text-2xl mt-4 font-semibold">
+            <p className="text-gray-700 text-[34px] leading-tight font-bold">
               {restro?.RestroName}
             </p>
 
-            <p className="text-gray-500 text-lg mt-1">
+            <p className="text-gray-500 text-[22px] mt-2">
               Station : {restro?.StationCode}
             </p>
+
           </div>
 
           {/* TABS */}
@@ -336,22 +333,22 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    <h2 className="text-3xl font-bold text-black leading-tight">
+                    <h2 className="text-[34px] leading-tight font-bold text-black">
                       {item.CustomerName || "Guest"}
                     </h2>
 
-                    <p className="text-gray-500 text-xl mt-2">
+                    <p className="text-gray-500 text-[22px] mt-2">
                       {item.CustomerMobile}
                     </p>
 
-                    <div className="grid grid-cols-2 gap-y-6 mt-8">
+                    <div className="grid grid-cols-2 gap-y-7 mt-8">
 
                       <div>
                         <p className="text-gray-400 text-lg">
                           Train
                         </p>
 
-                        <h3 className="text-2xl font-bold mt-1">
+                        <h3 className="text-[30px] font-bold mt-1">
                           {item.TrainNumber}
                         </h3>
                       </div>
@@ -361,7 +358,7 @@ export default function OrdersPage() {
                           Coach / Seat
                         </p>
 
-                        <h3 className="text-2xl font-bold mt-1">
+                        <h3 className="text-[30px] font-bold mt-1">
                           {item.Coach} / {item.Seat}
                         </h3>
                       </div>
@@ -371,7 +368,7 @@ export default function OrdersPage() {
                           Date
                         </p>
 
-                        <h3 className="text-2xl font-bold mt-1">
+                        <h3 className="text-[26px] font-bold mt-1">
                           {item.DeliveryDate}
                         </h3>
                       </div>
@@ -381,7 +378,7 @@ export default function OrdersPage() {
                           Time
                         </p>
 
-                        <h3 className="text-2xl font-bold mt-1">
+                        <h3 className="text-[26px] font-bold mt-1">
                           {item.DeliveryTime}
                         </h3>
                       </div>
@@ -394,7 +391,7 @@ export default function OrdersPage() {
                           Outlet
                         </p>
 
-                        <h3 className="text-2xl font-bold mt-1">
+                        <h3 className="text-[28px] font-bold mt-1">
                           {item.RestroName}
                         </h3>
                       </div>
@@ -495,33 +492,54 @@ export default function OrdersPage() {
 
       {/* MOBILE BOTTOM NAV */}
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-[82px] flex items-center justify-around z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-[84px] flex items-center justify-around z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
+
+        {/* ORDERS */}
 
         <button className="flex flex-col items-center text-[#2f54eb] font-semibold">
-          <span className="text-2xl">📦</span>
-          <span className="text-sm mt-1">
+
+          <span className="text-[24px]">
+            📦
+          </span>
+
+          <span className="text-[13px] mt-1">
             Orders
           </span>
+
         </button>
 
-        <button
-          onClick={() => router.push("/profile")}
-          className="flex flex-col items-center text-gray-700"
-        >
-          <span className="text-2xl">👤</span>
-          <span className="text-sm mt-1">
-            Profile
-          </span>
-        </button>
+        {/* DELIVERY */}
 
         <button
           onClick={() => router.push("/delivery-settings")}
           className="flex flex-col items-center text-gray-700"
         >
-          <span className="text-2xl">⚙️</span>
-          <span className="text-sm mt-1">
-            Settings
+
+          <span className="text-[24px]">
+            ⚙️
           </span>
+
+          <span className="text-[13px] mt-1">
+            Delivery
+          </span>
+
+        </button>
+
+        {/* PROFILE */}
+
+        <button
+          onClick={() => router.push("/profile")}
+          className="flex flex-col items-center text-gray-700"
+        >
+
+          <span className="text-[24px]">
+            👤
+          </span>
+
+          <span className="text-[13px] mt-1">
+            Profile
+          </span>
+
         </button>
 
       </div>

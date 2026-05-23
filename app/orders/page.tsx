@@ -34,9 +34,7 @@ export default function OrdersPage() {
 
       setRestro(restroData);
 
-      // ===============================
-      // FETCH ORDERS FROM SUPABASE
-      // ===============================
+      // FETCH ORDERS
 
       const { data, error } = await supabase
         .from("Orders")
@@ -45,6 +43,7 @@ export default function OrdersPage() {
         .order("CreatedAt", { ascending: false });
 
       console.log(data);
+      console.log(error);
 
       if (!error && data) {
         setOrders(data);
@@ -63,24 +62,23 @@ export default function OrdersPage() {
     router.push("/");
   }
 
-  // ====================================
   // FILTER ORDERS
-  // ====================================
 
   const filteredOrders = orders.filter((item) => {
 
-  const status = item.Status;
+    const status = item.Status;
 
-  // BOOKED → IN KITCHEN
-  if (
-    activeTab === "In Kitchen" &&
-    status === "Booked"
-  ) {
-    return true;
-  }
+    // BOOKED = IN KITCHEN
 
-  return status === activeTab;
-});
+    if (
+      activeTab === "In Kitchen" &&
+      status === "Booked"
+    ) {
+      return true;
+    }
+
+    return status === activeTab;
+  });
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex">
@@ -100,6 +98,7 @@ export default function OrdersPage() {
           />
 
           <div>
+
             <h1 className="text-[32px] font-bold leading-none">
               RailEats
             </h1>
@@ -107,6 +106,7 @@ export default function OrdersPage() {
             <p className="text-gray-500">
               Restro Panel
             </p>
+
           </div>
         </div>
 
@@ -138,14 +138,15 @@ export default function OrdersPage() {
           >
             Logout
           </button>
+
         </div>
       </div>
 
-      {/* MAIN SECTION */}
+      {/* MAIN */}
 
       <div className="flex-1 p-10">
 
-        {/* TOP HEADER */}
+        {/* TOP */}
 
         <div className="flex items-start justify-between mb-10">
 
@@ -162,6 +163,7 @@ export default function OrdersPage() {
             <p className="text-gray-500 text-lg mt-1">
               Station Code : {restro?.StationCode}
             </p>
+
           </div>
 
           <div className="bg-white border rounded-2xl px-8 py-5 shadow-sm">
@@ -173,10 +175,11 @@ export default function OrdersPage() {
             <div className="text-3xl font-bold">
               {restro?.RestroCode}
             </div>
+
           </div>
         </div>
 
-        {/* STATUS BUTTONS */}
+        {/* STATUS */}
 
         <div className="flex flex-wrap gap-4 mb-8">
 
@@ -215,113 +218,99 @@ export default function OrdersPage() {
 
           ) : filteredOrders.length === 0 ? (
 
-  <div className="p-20 text-center">
+            <div className="p-20 text-center">
 
-    <h2 className="text-4xl font-bold mb-4">
-      No Orders Yet
-    </h2>
+              <h2 className="text-4xl font-bold mb-4">
+                No Orders Yet
+              </h2>
 
-    <p className="text-gray-500 text-lg">
-      Orders for this restro will appear here.
-    </p>
-  </div>
+              <p className="text-gray-500 text-lg">
+                Orders for this restro will appear here.
+              </p>
 
-) : (
+            </div>
 
-  <table className="w-full">
+          ) : (
 
-    <thead className="bg-gray-50 border-b">
+            <table className="w-full">
 
-      <tr className="text-left">
+              <thead className="bg-gray-50 border-b">
 
-        <th className="p-5">Order ID</th>
-        <th className="p-5">Outlet</th>
-        <th className="p-5">Train</th>
-        <th className="p-5">Coach</th>
-        <th className="p-5">Seat</th>
-        <th className="p-5">Customer</th>
-        <th className="p-5">Mobile</th>
-        <th className="p-5">Date</th>
-        <th className="p-5">Time</th>
-        <th className="p-5">Status</th>
+                <tr className="text-left">
 
-      </tr>
-    </thead>
+                  <th className="p-5">Order ID</th>
+                  <th className="p-5">Outlet</th>
+                  <th className="p-5">Train</th>
+                  <th className="p-5">Coach</th>
+                  <th className="p-5">Seat</th>
+                  <th className="p-5">Customer</th>
+                  <th className="p-5">Mobile</th>
+                  <th className="p-5">Date</th>
+                  <th className="p-5">Time</th>
+                  <th className="p-5">Status</th>
 
-    <tbody>
+                </tr>
+              </thead>
 
-      {filteredOrders.map((item, index) => (
+              <tbody>
 
-        <tr
-          key={index}
-          className="border-b hover:bg-gray-50"
-        >
+                {filteredOrders.map((item, index) => (
 
-          {/* ORDER ID */}
+                  <tr
+                    key={index}
+                    className="border-b hover:bg-gray-50"
+                  >
 
-          <td className="p-5 font-medium">
-            {item.OrderId}
-          </td>
+                    <td className="p-5 font-medium">
+                      {item.OrderId}
+                    </td>
 
-          {/* RESTRO */}
+                    <td className="p-5">
+                      {item.RestroName}
+                    </td>
 
-          <td className="p-5">
-            {item.RestroName}
-          </td>
+                    <td className="p-5">
+                      {item.TrainNumber}
+                    </td>
 
-          {/* TRAIN */}
+                    <td className="p-5">
+                      {item.Coach}
+                    </td>
 
-          <td className="p-5">
-            {item.TrainNumber}
-          </td>
+                    <td className="p-5">
+                      {item.Seat}
+                    </td>
 
-          {/* COACH */}
+                    <td className="p-5">
+                      {item.CustomerName}
+                    </td>
 
-          <td className="p-5">
-            {item.Coach}
-          </td>
+                    <td className="p-5">
+                      {item.CustomerMobile}
+                    </td>
 
-          {/* SEAT */}
+                    <td className="p-5">
+                      {item.DeliveryDate}
+                    </td>
 
-          <td className="p-5">
-            {item.Seat}
-          </td>
+                    <td className="p-5">
+                      {item.DeliveryTime}
+                    </td>
 
-          {/* CUSTOMER */}
+                    <td className="p-5">
 
-          <td className="p-5">
-            {item.CustomerName}
-          </td>
+                      <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
+                        {item.Status}
+                      </span>
 
-          {/* MOBILE */}
-
-          <td className="p-5">
-            {item.CustomerMobile}
-          </td>
-
-          {/* DATE */}
-
-          <td className="p-5">
-            {item.DeliveryDate}
-          </td>
-
-          {/* TIME */}
-
-          <td className="p-5">
-            {item.DeliveryTime}
-          </td>
-
-          {/* STATUS */}
-
-          <td className="p-5">
-
-            <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
-              {item.Status}
-            </span>
-
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

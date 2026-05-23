@@ -17,15 +17,6 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("In Kitchen");
   const [loading, setLoading] = useState(true);
 
-  const tabs = [
-    "In Kitchen",
-    "Out for Delivery",
-    "Delivered",
-    "Cancelled",
-    "Not Delivered",
-    "Bad Delivery",
-  ];
-
   useEffect(() => {
     loadData();
   }, []);
@@ -54,6 +45,7 @@ export default function OrdersPage() {
       }
 
       setLoading(false);
+
     } catch (err) {
       console.log(err);
       setLoading(false);
@@ -66,11 +58,12 @@ export default function OrdersPage() {
   }
 
   const filteredOrders = orders.filter((item) => {
-    const status = item.Status?.toLowerCase().replace(/\s/g, "");
+
+    const status = item.Status?.toLowerCase().trim();
 
     if (
       activeTab === "In Kitchen" &&
-      status === "inkitchen"
+      (status === "inkitchen" || status === "booked")
     ) {
       return true;
     }
@@ -113,459 +106,207 @@ export default function OrdersPage() {
     return false;
   });
 
+  const tabs = [
+    "In Kitchen",
+    "Out for Delivery",
+    "Delivered",
+    "Cancelled",
+    "Not Delivered",
+    "Bad Delivery",
+  ];
+
   return (
-    <div className="min-h-screen bg-[#f4f6f8] flex">
+    <div className="min-h-screen bg-[#f5f6fb] pb-[90px] md:pb-0">
 
-      {/* SIDEBAR */}
+      {/* MOBILE HEADER */}
 
-      <div className="hidden lg:flex w-[290px] bg-white border-r min-h-screen flex-col">
+      <div className="md:hidden bg-white px-4 py-4 shadow-sm sticky top-0 z-50">
 
-        {/* LOGO */}
+        <div className="flex items-center justify-between">
 
-        <div className="h-[95px] border-b flex items-center px-6 gap-4">
+          <div className="flex items-center gap-3">
 
-          <img
-            src="/logo.png"
-            alt="logo"
-            className="w-[54px] h-[54px]"
-          />
+            <img
+              src="/logo.png"
+              className="w-12 h-12 rounded-xl"
+            />
 
-          <div>
+            <div>
 
-            <h1 className="text-[32px] font-bold leading-none">
-              RailEats
-            </h1>
+              <h1 className="text-2xl font-bold leading-none">
+                RailEats
+              </h1>
 
-            <p className="text-gray-500">
-              Restro Panel
-            </p>
+              <p className="text-gray-500 text-sm mt-1">
+                {restro?.RestroName}
+              </p>
+
+            </div>
+          </div>
+
+          <div className="bg-[#2f54eb] text-white w-[72px] h-[72px] rounded-3xl flex flex-col items-center justify-center shadow-lg">
+
+            <div className="text-[11px] opacity-80">
+              Code
+            </div>
+
+            <div className="text-2xl font-bold">
+              {restro?.RestroCode}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div className="flex">
+
+        {/* DESKTOP SIDEBAR */}
+
+        <div className="hidden md:block w-[280px] bg-white border-r min-h-screen">
+
+          <div className="h-[92px] border-b flex items-center px-6 gap-4">
+
+            <img
+              src="/logo.png"
+              alt="logo"
+              className="w-[52px] h-[52px]"
+            />
+
+            <div>
+
+              <h1 className="text-[32px] font-bold leading-none">
+                RailEats
+              </h1>
+
+              <p className="text-gray-500">
+                Restro Panel
+              </p>
+
+            </div>
+          </div>
+
+          <div className="p-4 flex flex-col gap-3">
+
+            <button className="bg-[#2f54eb] text-white h-[54px] rounded-xl text-left px-5 font-semibold text-[18px]">
+              Orders
+            </button>
+
+            <button
+              onClick={() => router.push("/profile")}
+              className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+            >
+              Restro Profile
+            </button>
+
+            <button
+              onClick={() => router.push("/delivery-settings")}
+              className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+            >
+              Delivery Settings
+            </button>
+
+            <button
+              onClick={logout}
+              className="h-[54px] rounded-xl text-left px-5 hover:bg-red-50 text-red-500 text-[18px]"
+            >
+              Logout
+            </button>
 
           </div>
         </div>
 
-        {/* MENU */}
+        {/* MAIN */}
 
-        <div className="p-4 flex flex-col gap-3">
+        <div className="flex-1 px-4 md:px-10 py-5 md:py-10">
 
-          <button className="bg-[#2f54eb] text-white h-[56px] rounded-2xl text-left px-5 font-semibold text-[18px]">
-            Orders
-          </button>
+          {/* DESKTOP TOP */}
 
-          <button
-            onClick={() => router.push("/profile")}
-            className="h-[56px] rounded-2xl text-left px-5 hover:bg-gray-100 text-[18px]"
-          >
-            Restro Profile
-          </button>
+          <div className="hidden md:flex items-start justify-between mb-10">
 
-          <button
-            onClick={() => router.push("/delivery-settings")}
-            className="h-[56px] rounded-2xl text-left px-5 hover:bg-gray-100 text-[18px]"
-          >
-            Delivery Settings
-          </button>
+            <div>
 
-          <button
-            onClick={logout}
-            className="h-[56px] rounded-2xl text-left px-5 hover:bg-red-50 text-red-500 text-[18px]"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+              <h1 className="text-5xl font-bold">
+                Orders
+              </h1>
 
-      {/* MAIN */}
+              <p className="text-gray-500 mt-4 text-xl">
+                Welcome {restro?.RestroName}
+              </p>
 
-      <div className="flex-1">
+              <p className="text-gray-500 text-lg mt-1">
+                Station Code : {restro?.StationCode}
+              </p>
 
-       {/* MOBILE UI */}
-
-<div className="lg:hidden">
-
-  {/* TOP BAR */}
-
-  <div className="sticky top-0 z-40 bg-white border-b px-4 py-4">
-
-    <div className="flex items-center justify-between">
-
-      <div className="flex items-center gap-3">
-
-        <img
-          src="/logo.png"
-          className="w-11 h-11 rounded-xl"
-        />
-
-        <div>
-
-          <h2 className="text-[20px] font-bold leading-none">
-            RailEats
-          </h2>
-
-          <p className="text-[13px] text-gray-500 mt-1">
-            {restro?.RestroName}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-[#2f54eb] text-white px-4 py-2 rounded-2xl font-bold text-[18px] shadow">
-        {orders.length}
-      </div>
-    </div>
-  </div>
-
-  {/* PAGE */}
-
-  <div className="px-4 pt-5 pb-[110px]">
-
-    {/* TITLE */}
-
-    <div className="mb-5">
-
-      <h1 className="text-[34px] font-bold leading-none">
-        Orders
-      </h1>
-
-      <p className="text-gray-500 mt-2 text-[15px]">
-        Station : {restro?.StationCode}
-      </p>
-    </div>
-
-    {/* STATUS TABS */}
-
-    <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar mb-5">
-
-      {tabs.map((status) => (
-
-        <button
-          key={status}
-          onClick={() => setActiveTab(status)}
-          className={`min-w-fit px-5 h-[48px] rounded-2xl text-[14px] font-semibold whitespace-nowrap transition-all ${
-            activeTab === status
-              ? "bg-[#2f54eb] text-white shadow"
-              : "bg-white border border-gray-200"
-          }`}
-        >
-          {status}
-        </button>
-      ))}
-    </div>
-
-    {/* LOADING */}
-
-    {loading ? (
-
-      <div className="bg-white rounded-[28px] p-10 text-center shadow-sm">
-
-        <h2 className="text-2xl font-bold">
-          Loading...
-        </h2>
-
-      </div>
-
-    ) : filteredOrders.length === 0 ? (
-
-      <div className="bg-white rounded-[28px] p-10 text-center shadow-sm">
-
-        <h2 className="text-3xl font-bold">
-          No Orders
-        </h2>
-
-        <p className="text-gray-500 mt-3">
-          Orders will appear here
-        </p>
-
-      </div>
-
-    ) : (
-
-      <div className="space-y-4">
-
-        {filteredOrders.map((order, index) => (
-
-          <div
-            key={index}
-            className="bg-white rounded-[28px] p-5 shadow-sm border border-gray-100"
-          >
-
-            {/* TOP */}
-
-            <div className="flex items-start justify-between gap-4">
-
-              <div className="min-w-0">
-
-                <h2 className="text-[19px] font-bold leading-tight break-words">
-                  {order.CustomerName || "Guest"}
-                </h2>
-
-                <p className="text-gray-500 text-[14px] mt-1">
-                  {order.CustomerMobile}
-                </p>
-              </div>
-
-              <div className="bg-[#eef2ff] text-[#2f54eb] px-3 py-2 rounded-xl text-[12px] font-bold max-w-[130px] break-words text-right">
-                #{order.OrderId}
-              </div>
             </div>
 
-            {/* MIDDLE */}
+            <div className="bg-white border rounded-3xl px-8 py-5 shadow-sm">
 
-            <div className="grid grid-cols-2 gap-y-5 mt-6">
-
-              <div>
-
-                <p className="text-gray-400 text-[13px]">
-                  Train
-                </p>
-
-                <p className="font-bold text-[18px] mt-1">
-                  {order.TrainNumber}
-                </p>
+              <div className="text-gray-500 text-sm">
+                Restro Code
               </div>
 
-              <div>
-
-                <p className="text-gray-400 text-[13px]">
-                  Coach / Seat
-                </p>
-
-                <p className="font-bold text-[18px] mt-1">
-                  {order.Coach || "-"} / {order.Seat || "-"}
-                </p>
+              <div className="text-3xl font-bold">
+                {restro?.RestroCode}
               </div>
 
-              <div>
-
-                <p className="text-gray-400 text-[13px]">
-                  Delivery Date
-                </p>
-
-                <p className="font-semibold text-[16px] mt-1">
-                  {order.DeliveryDate}
-                </p>
-              </div>
-
-              <div>
-
-                <p className="text-gray-400 text-[13px]">
-                  Time
-                </p>
-
-                <p className="font-semibold text-[16px] mt-1">
-                  {order.DeliveryTime}
-                </p>
-              </div>
-            </div>
-
-            {/* BOTTOM */}
-
-            <div className="flex items-center justify-between mt-6">
-
-              <div className="bg-[#2f54eb] text-white px-4 py-2 rounded-xl text-[13px] font-semibold capitalize">
-                {order.Status}
-              </div>
-
-              <div className="text-[13px] text-gray-500">
-                {order.RestroName}
-              </div>
             </div>
           </div>
-        ))}
-      </div>
-    )}
-  </div>
 
-  {/* BOTTOM NAV */}
+          {/* MOBILE TITLE */}
 
-  <div className="fixed bottom-0 left-0 right-0 bg-white border-t h-[72px] flex items-center justify-around z-50">
-
-    <button className="flex flex-col items-center text-[#2f54eb] font-semibold text-[13px]">
-      <span className="text-[22px]">📦</span>
-      Orders
-    </button>
-
-    <button
-      onClick={() => router.push("/profile")}
-      className="flex flex-col items-center text-gray-500 text-[13px]"
-    >
-      <span className="text-[22px]">👤</span>
-      Profile
-    </button>
-
-    <button
-      onClick={() => router.push("/delivery-settings")}
-      className="flex flex-col items-center text-gray-500 text-[13px]"
-    >
-      <span className="text-[22px]">⚙️</span>
-      Settings
-    </button>
-
-    <button
-      onClick={logout}
-      className="flex flex-col items-center text-red-500 text-[13px]"
-    >
-      <span className="text-[22px]">↩️</span>
-      Logout
-    </button>
-  </div>
-</div>
-
-        {/* DESKTOP HEADER */}
-
-        <div className="hidden lg:flex items-start justify-between p-10 pb-4">
-
-          <div>
+          <div className="md:hidden mb-5">
 
             <h1 className="text-5xl font-bold">
               Orders
             </h1>
 
-            <p className="text-gray-500 mt-4 text-xl">
-              Welcome {restro?.RestroName}
+            <p className="text-gray-700 text-2xl mt-4 font-semibold">
+              {restro?.RestroName}
             </p>
 
             <p className="text-gray-500 text-lg mt-1">
-              Station Code : {restro?.StationCode}
+              Station : {restro?.StationCode}
             </p>
           </div>
 
-          <div className="bg-white border rounded-3xl px-8 py-5 shadow-sm">
+          {/* TABS */}
 
-            <div className="text-gray-500 text-sm">
-              Restro Code
-            </div>
-
-            <div className="text-3xl font-bold">
-              {restro?.RestroCode}
-            </div>
-          </div>
-        </div>
-
-        {/* STATUS TABS */}
-
-        <div className="px-4 lg:px-10 mt-6">
-
-          {/* MOBILE */}
-
-          <div className="lg:hidden">
-
-            <div className="flex items-center gap-3">
-
-              <button
-                onClick={() => {
-                  const currentIndex = tabs.indexOf(activeTab);
-
-                  const newIndex =
-                    currentIndex === 0
-                      ? tabs.length - 1
-                      : currentIndex - 1;
-
-                  setActiveTab(tabs[newIndex]);
-                }}
-                className="min-w-[48px] h-[48px] rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[22px] font-bold"
-              >
-                {"<"}
-              </button>
-
-              <div className="flex-1 grid grid-cols-3 gap-2">
-
-                {tabs
-                  .slice(
-                    Math.max(
-                      0,
-                      Math.min(
-                        tabs.indexOf(activeTab) - 1,
-                        tabs.length - 3
-                      )
-                    ),
-                    Math.max(
-                      0,
-                      Math.min(
-                        tabs.indexOf(activeTab) - 1,
-                        tabs.length - 3
-                      )
-                    ) + 3
-                  )
-                  .map((status) => (
-
-                    <button
-                      key={status}
-                      onClick={() => setActiveTab(status)}
-                      className={`h-[54px] rounded-2xl px-2 text-[13px] leading-tight font-semibold transition-all ${
-                        activeTab === status
-                          ? "bg-[#2f54eb] text-white shadow-md"
-                          : "bg-white border border-gray-200 text-black"
-                      }`}
-                    >
-                      <span className="line-clamp-2">
-                        {status}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-
-              <button
-                onClick={() => {
-                  const currentIndex = tabs.indexOf(activeTab);
-
-                  const newIndex =
-                    currentIndex === tabs.length - 1
-                      ? 0
-                      : currentIndex + 1;
-
-                  setActiveTab(tabs[newIndex]);
-                }}
-                className="min-w-[48px] h-[48px] rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-[22px] font-bold"
-              >
-                {">"}
-              </button>
-            </div>
-          </div>
-
-          {/* DESKTOP */}
-
-          <div className="hidden lg:flex flex-wrap gap-4">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 mb-6">
 
             {tabs.map((status) => (
 
               <button
                 key={status}
                 onClick={() => setActiveTab(status)}
-                className={`px-7 py-4 rounded-2xl text-[16px] font-semibold transition-all ${
+                className={`shrink-0 px-5 md:px-7 py-3 md:py-4 rounded-2xl font-semibold text-sm md:text-base transition-all ${
                   activeTab === status
-                    ? "bg-[#2f54eb] text-white shadow"
-                    : "bg-white border border-gray-200"
+                    ? "bg-[#2f54eb] text-white shadow-lg"
+                    : "bg-white border text-black"
                 }`}
               >
                 {status}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* CONTENT */}
-
-        <div className="p-4 lg:p-10">
+          {/* LOADING */}
 
           {loading ? (
 
-            <div className="bg-white rounded-[30px] p-16 text-center shadow-sm border">
-
-              <h2 className="text-3xl font-bold">
-                Loading Orders...
-              </h2>
-
+            <div className="bg-white rounded-3xl p-20 text-center text-2xl shadow-sm">
+              Loading...
             </div>
 
           ) : filteredOrders.length === 0 ? (
 
-            <div className="bg-white rounded-[30px] p-16 text-center shadow-sm border">
+            <div className="bg-white rounded-3xl p-16 md:p-20 text-center shadow-sm">
 
-              <h2 className="text-4xl font-bold mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 No Orders Yet
               </h2>
 
               <p className="text-gray-500 text-lg">
-                Orders will appear here.
+                Orders for this restro will appear here.
               </p>
 
             </div>
@@ -575,91 +316,92 @@ export default function OrdersPage() {
             <>
               {/* MOBILE CARDS */}
 
-              <div className="lg:hidden space-y-5">
+              <div className="md:hidden flex flex-col gap-5">
 
-                {filteredOrders.map((order, index) => (
+                {filteredOrders.map((item, index) => (
 
                   <div
                     key={index}
-                    className="bg-white rounded-[28px] p-5 shadow-sm border border-gray-100"
+                    className="bg-white rounded-[30px] p-5 shadow-sm"
                   >
 
-                    {/* TOP */}
+                    <div className="flex items-start justify-between mb-5">
 
-                    <div className="flex items-start justify-between gap-3">
-
-                      <div className="min-w-0">
-
-                        <h2 className="font-bold text-[18px] break-words">
-                          {order.CustomerName}
-                        </h2>
-
-                        <p className="text-gray-500 text-[14px] mt-1 break-all">
-                          {order.CustomerMobile}
-                        </p>
+                      <div className="bg-[#eef2ff] text-[#2f54eb] px-4 py-2 rounded-2xl text-sm font-semibold max-w-[65%] break-words">
+                        #{item.OrderId}
                       </div>
 
-                      <span className="bg-[#2f54eb] text-white px-3 py-2 rounded-xl text-[12px] font-semibold">
-                        #{order.OrderId}
-                      </span>
+                      <div className="bg-orange-100 text-orange-500 px-4 py-2 rounded-2xl text-sm font-semibold">
+                        {item.Status}
+                      </div>
                     </div>
 
-                    {/* DETAILS */}
+                    <h2 className="text-3xl font-bold text-black leading-tight">
+                      {item.CustomerName || "Guest"}
+                    </h2>
 
-                    <div className="grid grid-cols-2 gap-y-5 gap-x-3 mt-6">
+                    <p className="text-gray-500 text-xl mt-2">
+                      {item.CustomerMobile}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-y-6 mt-8">
 
                       <div>
-
-                        <p className="text-gray-500 text-[13px]">
+                        <p className="text-gray-400 text-lg">
                           Train
                         </p>
 
-                        <p className="font-semibold text-[16px] mt-1">
-                          {order.TrainNumber}
-                        </p>
+                        <h3 className="text-2xl font-bold mt-1">
+                          {item.TrainNumber}
+                        </h3>
                       </div>
 
                       <div>
-
-                        <p className="text-gray-500 text-[13px]">
+                        <p className="text-gray-400 text-lg">
                           Coach / Seat
                         </p>
 
-                        <p className="font-semibold text-[16px] mt-1">
-                          {order.Coach} / {order.Seat}
-                        </p>
+                        <h3 className="text-2xl font-bold mt-1">
+                          {item.Coach} / {item.Seat}
+                        </h3>
                       </div>
 
                       <div>
-
-                        <p className="text-gray-500 text-[13px]">
+                        <p className="text-gray-400 text-lg">
                           Date
                         </p>
 
-                        <p className="font-semibold text-[16px] mt-1">
-                          {order.DeliveryDate}
-                        </p>
+                        <h3 className="text-2xl font-bold mt-1">
+                          {item.DeliveryDate}
+                        </h3>
                       </div>
 
                       <div>
-
-                        <p className="text-gray-500 text-[13px]">
+                        <p className="text-gray-400 text-lg">
                           Time
                         </p>
 
-                        <p className="font-semibold text-[16px] mt-1">
-                          {order.DeliveryTime}
-                        </p>
+                        <h3 className="text-2xl font-bold mt-1">
+                          {item.DeliveryTime}
+                        </h3>
                       </div>
                     </div>
 
-                    {/* STATUS */}
+                    <div className="border-t mt-8 pt-5 flex items-center justify-between">
 
-                    <div className="mt-6">
+                      <div>
+                        <p className="text-gray-400 text-lg">
+                          Outlet
+                        </p>
 
-                      <span className="bg-[#2f54eb] text-white px-5 py-3 rounded-xl text-[14px] font-semibold inline-block">
-                        {order.Status}
-                      </span>
+                        <h3 className="text-2xl font-bold mt-1">
+                          {item.RestroName}
+                        </h3>
+                      </div>
+
+                      <button className="bg-[#eef2ff] text-[#2f54eb] px-5 py-3 rounded-2xl font-semibold">
+                        View
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -667,7 +409,7 @@ export default function OrdersPage() {
 
               {/* DESKTOP TABLE */}
 
-              <div className="hidden lg:block bg-white rounded-3xl shadow-sm border overflow-auto">
+              <div className="hidden md:block bg-white rounded-3xl shadow-sm border overflow-auto">
 
                 <table className="w-full">
 
@@ -736,7 +478,7 @@ export default function OrdersPage() {
 
                         <td className="p-5">
 
-                          <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
+                          <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-xl text-sm">
                             {item.Status}
                           </span>
 
@@ -749,6 +491,39 @@ export default function OrdersPage() {
             </>
           )}
         </div>
+      </div>
+
+      {/* MOBILE BOTTOM NAV */}
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-[82px] flex items-center justify-around z-50">
+
+        <button className="flex flex-col items-center text-[#2f54eb] font-semibold">
+          <span className="text-2xl">📦</span>
+          <span className="text-sm mt-1">
+            Orders
+          </span>
+        </button>
+
+        <button
+          onClick={() => router.push("/profile")}
+          className="flex flex-col items-center text-gray-700"
+        >
+          <span className="text-2xl">👤</span>
+          <span className="text-sm mt-1">
+            Profile
+          </span>
+        </button>
+
+        <button
+          onClick={() => router.push("/delivery-settings")}
+          className="flex flex-col items-center text-gray-700"
+        >
+          <span className="text-2xl">⚙️</span>
+          <span className="text-sm mt-1">
+            Settings
+          </span>
+        </button>
+
       </div>
     </div>
   );

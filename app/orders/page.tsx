@@ -63,7 +63,7 @@ export default function OrdersPage() {
 
     if (
       activeTab === "In Kitchen" &&
-      (status === "inkitchen" || status === "booked")
+      (status === "inkitchen" || status === "inkitchen")
     ) {
       return true;
     }

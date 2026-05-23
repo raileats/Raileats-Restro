@@ -41,7 +41,7 @@ export default function OrdersPage() {
       const { data, error } = await supabase
         .from("Orders")
         .select("*")
-        .eq("OutletID", restroData.RestroCode)
+        .eq("RestroCode", restroData.RestroCode)
         .order("CreatedAt", { ascending: false });
 
       console.log(data);

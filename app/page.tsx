@@ -1,92 +1,117 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function Home() {
+  const router = useRouter();
+
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  async function handleLogin() {
     if (!mobile || !password) {
       alert("Please enter mobile and password");
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const { data, error } = await supabase
-  .from("RestroMaster")
-  .select("*")
-  .eq("RestroLoginMobile", mobile)
-  .eq("RestroPassword", password)
-  .single();
-console.log(data);
-console.log(error);
-    
-    setLoading(false);
+      const { data, error } = await supabase
+        .from("RestroMaster")
+        .select("*")
+        .eq("RestroLoginMobile", mobile)
+        .eq("RestroPassword", password)
+        .single();
 
-    if (error || !data) {
-      alert("Invalid Credentials");
-      return;
+      console.log(data);
+      console.log(error);
+
+      if (error || !data) {
+        alert("Invalid Credentials");
+        setLoading(false);
+        return;
+      }
+
+      // SAVE LOGIN SESSION
+
+      localStorage.setItem(
+        "restro",
+        JSON.stringify(data)
+      );
+
+      // REDIRECT TO ORDERS
+
+      router.push("/orders");
+
+    } catch (err) {
+      console.log(err);
+      alert("Login Failed");
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem(
-  "restro",
-  JSON.stringify(data)
-);
-
-window.location.href = "/orders";
-
-    // NEXT STEP
-    // dashboard redirect yaha hoga
-  };
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
+
       {/* HEADER */}
-      <div className="h-[74px] bg-white border-b flex items-center px-16">
+
+      <div className="h-[74px] bg-white border-b border-gray-200 flex items-center px-16">
+
         <div className="flex items-center gap-4">
+
           <img
             src="/logo.png"
             alt="RailEats"
-            className="w-[58px] h-[58px]"
+            className="w-[58px] h-[58px] object-contain"
           />
 
-          <h1 className="text-[22px] font-semibold text-black">
+          <h1 className="text-[24px] font-semibold text-black">
             RailEats
           </h1>
         </div>
       </div>
 
-      {/* LOGIN */}
-      <div className="flex items-center justify-center py-20">
-        <div className="w-[440px] bg-white rounded-xl shadow-sm p-8">
-          
+      {/* LOGIN SECTION */}
+
+      <div className="flex items-center justify-center py-20 px-4">
+
+        <div className="w-full max-w-[460px] bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+
           {/* LOGO */}
-          <div className="mb-6">
+
+          <div className="mb-6 flex justify-center">
+
             <img
               src="/logo.png"
               alt="RailEats"
-              className="w-[64px] h-[64px]"
+              className="w-[72px] h-[72px] object-contain"
             />
           </div>
 
           {/* TITLE */}
-          <h2 className="text-[38px] font-semibold text-center mb-10">
+
+          <h2 className="text-[40px] font-bold text-center text-black mb-10">
             Restro Login
           </h2>
 
           {/* MOBILE */}
+
           <div className="mb-6">
-            <label className="block text-[15px] mb-2 font-medium">
+
+            <label className="block text-[15px] font-medium text-black mb-2">
               Mobile Number
             </label>
 
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={10}
               value={mobile}
               onChange={(e) => {
                 const value = e.target.value
@@ -96,17 +121,20 @@ window.location.href = "/orders";
                 setMobile(value);
               }}
               placeholder="Enter mobile number"
-              className="w-full h-[56px] border border-gray-300 rounded-lg px-4 text-[16px] outline-none focus:border-black"
+              className="w-full h-[56px] border border-gray-300 rounded-xl px-4 text-[16px] outline-none focus:border-[#2f54eb]"
             />
           </div>
 
           {/* PASSWORD */}
+
           <div className="mb-8">
-            <label className="block text-[15px] mb-2 font-medium">
+
+            <label className="block text-[15px] font-medium text-black mb-2">
               Password
             </label>
 
             <div className="relative">
+
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
@@ -114,7 +142,7 @@ window.location.href = "/orders";
                   setPassword(e.target.value)
                 }
                 placeholder="Enter password"
-                className="w-full h-[56px] border border-gray-300 rounded-lg px-4 pr-12 text-[16px] outline-none focus:border-black"
+                className="w-full h-[56px] border border-gray-300 rounded-xl px-4 pr-12 text-[16px] outline-none focus:border-[#2f54eb]"
               />
 
               <button
@@ -122,23 +150,25 @@ window.location.href = "/orders";
                 onClick={() =>
                   setShowPassword(!showPassword)
                 }
-                className="absolute right-4 top-1/2 -translate-y-1/2"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[18px]"
               >
                 👁️
               </button>
             </div>
           </div>
 
-          {/* BUTTON */}
+          {/* LOGIN BUTTON */}
+
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full h-[56px] bg-[#f4b400] hover:bg-[#e5aa00] text-black text-[22px] font-semibold rounded-lg transition"
+            className="w-full h-[58px] bg-[#f4b400] hover:bg-[#e5aa00] text-black text-[22px] font-semibold rounded-xl transition disabled:opacity-60"
           >
             {loading ? "Please wait..." : "Log in"}
           </button>
 
           {/* FOOTER */}
+
           <p className="text-center text-gray-500 text-sm mt-6">
             Please use your restro credentials.
           </p>

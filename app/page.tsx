@@ -28,9 +28,6 @@ export default function Home() {
         .eq("RestroPassword", password)
         .single();
 
-      console.log(data);
-      console.log(error);
-
       if (error || !data) {
         alert("Invalid Credentials");
         setLoading(false);
@@ -38,16 +35,10 @@ export default function Home() {
       }
 
       // SAVE LOGIN SESSION
-
-      localStorage.setItem(
-        "restro",
-        JSON.stringify(data)
-      );
+      localStorage.setItem("restro", JSON.stringify(data));
 
       // REDIRECT TO ORDERS
-
       router.push("/orders");
-
     } catch (err) {
       console.log(err);
       alert("Login Failed");
@@ -57,123 +48,85 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6]">
-
-      {/* HEADER */}
-
-      <div className="h-[74px] bg-white border-b border-gray-200 flex items-center px-16">
-
-        <div className="flex items-center gap-4">
-
-          <img
-            src="/logo.png"
-            alt="RailEats"
-            className="w-[58px] h-[58px] object-contain"
-          />
-
-          <h1 className="text-[24px] font-semibold text-black">
-            RailEats
-          </h1>
+    <div className="min-h-screen bg-[#f8f9fa] font-sans text-gray-900 max-w-md mx-auto flex flex-col justify-between shadow-xl">
+      
+      {/* BRAND HEADER */}
+      <header className="bg-white px-6 py-4 flex items-center gap-3 border-b border-gray-100">
+        <div className="w-9 h-9 bg-[#f4b400] rounded-xl flex items-center justify-center shadow-sm">
+          <img src="/logo.png" alt="RailEats" className="w-6 h-6 object-contain" />
         </div>
-      </div>
+        <h1 className="text-lg font-black tracking-tight">RailEats</h1>
+      </header>
 
-      {/* LOGIN SECTION */}
-
-      <div className="flex items-center justify-center py-20 px-4">
-
-        <div className="w-full max-w-[460px] bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-
-          {/* LOGO */}
-
-          <div className="mb-6 flex justify-center">
-
-            <img
-              src="/logo.png"
-              alt="RailEats"
-              className="w-[72px] h-[72px] object-contain"
-            />
+      {/* LOGIN CARD */}
+      <main className="p-6 flex-1 flex flex-col justify-center">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-extrabold text-gray-950">Restro Login</h2>
+            <p className="text-xs text-gray-400 mt-1 font-medium">Manage your station kitchen orders seamlessly</p>
           </div>
 
-          {/* TITLE */}
-
-          <h2 className="text-[40px] font-bold text-center text-black mb-10">
-            Restro Login
-          </h2>
-
-          {/* MOBILE */}
-
-          <div className="mb-6">
-
-            <label className="block text-[15px] font-medium text-black mb-2">
+          {/* MOBILE INPUT */}
+          <div className="mb-4">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
               Mobile Number
             </label>
-
             <input
               type="text"
               inputMode="numeric"
               maxLength={10}
               value={mobile}
               onChange={(e) => {
-                const value = e.target.value
-                  .replace(/\D/g, "")
-                  .slice(0, 10);
-
+                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
                 setMobile(value);
               }}
-              placeholder="Enter mobile number"
-              className="w-full h-[56px] border border-gray-300 rounded-xl px-4 text-[16px] outline-none focus:border-[#2f54eb]"
+              placeholder="Enter 10-digit mobile number"
+              className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium outline-none focus:border-[#2f54eb] focus:bg-white transition-all"
             />
           </div>
 
-          {/* PASSWORD */}
-
-          <div className="mb-8">
-
-            <label className="block text-[15px] font-medium text-black mb-2">
+          {/* PASSWORD INPUT */}
+          <div className="mb-6">
+            <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">
               Password
             </label>
-
             <div className="relative">
-
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) =>
-                  setPassword(e.target.value)
-                }
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full h-[56px] border border-gray-300 rounded-xl px-4 pr-12 text-[16px] outline-none focus:border-[#2f54eb]"
+                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 pr-12 text-sm font-medium outline-none focus:border-[#2f54eb] focus:bg-white transition-all"
               />
-
               <button
                 type="button"
-                onClick={() =>
-                  setShowPassword(!showPassword)
-                }
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[18px]"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm gray-400 hover:text-gray-600"
               >
-                👁️
+                {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
 
           {/* LOGIN BUTTON */}
-
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full h-[58px] bg-[#f4b400] hover:bg-[#e5aa00] text-black text-[22px] font-semibold rounded-xl transition disabled:opacity-60"
+            className="w-full h-12 bg-[#2f54eb] hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-100 transition duration-150 disabled:opacity-60 flex items-center justify-center"
           >
-            {loading ? "Please wait..." : "Log in"}
+            {loading ? "Verifying Credentials..." : "Log In to Dashboard"}
           </button>
-
-          {/* FOOTER */}
-
-          <p className="text-center text-gray-500 text-sm mt-6">
-            Please use your restro credentials.
-          </p>
         </div>
-      </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="p-6 text-center">
+        <p className="text-xs text-gray-400 font-medium">
+          Authorized Restro Panel Access Only.
+        </p>
+      </footer>
+
     </div>
   );
 }

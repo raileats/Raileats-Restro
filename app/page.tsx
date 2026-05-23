@@ -33,7 +33,12 @@ console.log(error);
       return;
     }
 
-    alert(`Welcome ${data.restaurant_name}`);
+    localStorage.setItem(
+  "restro",
+  JSON.stringify(data)
+);
+
+window.location.href = "/orders";
 
     // NEXT STEP
     // dashboard redirect yaha hoga

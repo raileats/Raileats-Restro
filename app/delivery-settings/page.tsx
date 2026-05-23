@@ -320,8 +320,7 @@ export default function DeliverySettingsPage() {
 
       {/* BOTTOM NAV */}
 
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full
-
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full bg-white border-t h-[84px] flex items-center justify-around z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
         <button
           onClick={() => router.push("/orders")}
           className="flex flex-col items-center text-gray-700"

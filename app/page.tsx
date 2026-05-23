@@ -18,12 +18,11 @@ export default function Home() {
     setLoading(true);
 
     const { data, error } = await supabase
-      .from("restaurants")
-      .select("*")
-      .eq("mobile", mobile)
-      .eq("password", password)
-      .single();
-
+  .from("RestroMaster")
+  .select("*")
+  .eq("RestroLoginMobile", mobile)
+  .eq("RestroPassword", password)
+  .single();
     setLoading(false);
 
     if (error || !data) {

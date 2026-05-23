@@ -178,32 +178,236 @@ export default function OrdersPage() {
 
       <div className="flex-1">
 
-        {/* MOBILE HEADER */}
+       {/* MOBILE UI */}
 
-        <div className="lg:hidden px-4 pt-5 pb-2">
+<div className="lg:hidden">
 
-          <div className="flex items-start justify-between gap-3">
+  {/* TOP BAR */}
 
-            <div className="min-w-0">
+  <div className="sticky top-0 z-40 bg-white border-b px-4 py-4">
 
-              <h1 className="text-[40px] font-bold leading-none">
-                Orders
-              </h1>
+    <div className="flex items-center justify-between">
 
-              <p className="text-[24px] font-semibold text-gray-800 mt-5 leading-tight break-words">
-                {restro?.RestroName}
-              </p>
+      <div className="flex items-center gap-3">
 
-              <p className="text-[16px] text-gray-500 mt-2">
-                Station : {restro?.StationCode}
-              </p>
+        <img
+          src="/logo.png"
+          className="w-11 h-11 rounded-xl"
+        />
+
+        <div>
+
+          <h2 className="text-[20px] font-bold leading-none">
+            RailEats
+          </h2>
+
+          <p className="text-[13px] text-gray-500 mt-1">
+            {restro?.RestroName}
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-[#2f54eb] text-white px-4 py-2 rounded-2xl font-bold text-[18px] shadow">
+        {orders.length}
+      </div>
+    </div>
+  </div>
+
+  {/* PAGE */}
+
+  <div className="px-4 pt-5 pb-[110px]">
+
+    {/* TITLE */}
+
+    <div className="mb-5">
+
+      <h1 className="text-[34px] font-bold leading-none">
+        Orders
+      </h1>
+
+      <p className="text-gray-500 mt-2 text-[15px]">
+        Station : {restro?.StationCode}
+      </p>
+    </div>
+
+    {/* STATUS TABS */}
+
+    <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar mb-5">
+
+      {tabs.map((status) => (
+
+        <button
+          key={status}
+          onClick={() => setActiveTab(status)}
+          className={`min-w-fit px-5 h-[48px] rounded-2xl text-[14px] font-semibold whitespace-nowrap transition-all ${
+            activeTab === status
+              ? "bg-[#2f54eb] text-white shadow"
+              : "bg-white border border-gray-200"
+          }`}
+        >
+          {status}
+        </button>
+      ))}
+    </div>
+
+    {/* LOADING */}
+
+    {loading ? (
+
+      <div className="bg-white rounded-[28px] p-10 text-center shadow-sm">
+
+        <h2 className="text-2xl font-bold">
+          Loading...
+        </h2>
+
+      </div>
+
+    ) : filteredOrders.length === 0 ? (
+
+      <div className="bg-white rounded-[28px] p-10 text-center shadow-sm">
+
+        <h2 className="text-3xl font-bold">
+          No Orders
+        </h2>
+
+        <p className="text-gray-500 mt-3">
+          Orders will appear here
+        </p>
+
+      </div>
+
+    ) : (
+
+      <div className="space-y-4">
+
+        {filteredOrders.map((order, index) => (
+
+          <div
+            key={index}
+            className="bg-white rounded-[28px] p-5 shadow-sm border border-gray-100"
+          >
+
+            {/* TOP */}
+
+            <div className="flex items-start justify-between gap-4">
+
+              <div className="min-w-0">
+
+                <h2 className="text-[19px] font-bold leading-tight break-words">
+                  {order.CustomerName || "Guest"}
+                </h2>
+
+                <p className="text-gray-500 text-[14px] mt-1">
+                  {order.CustomerMobile}
+                </p>
+              </div>
+
+              <div className="bg-[#eef2ff] text-[#2f54eb] px-3 py-2 rounded-xl text-[12px] font-bold max-w-[130px] break-words text-right">
+                #{order.OrderId}
+              </div>
             </div>
 
-            <div className="bg-[#2f54eb] text-white min-w-[62px] h-[62px] rounded-2xl flex items-center justify-center text-[22px] font-bold shadow-md">
-              {orders.length}
+            {/* MIDDLE */}
+
+            <div className="grid grid-cols-2 gap-y-5 mt-6">
+
+              <div>
+
+                <p className="text-gray-400 text-[13px]">
+                  Train
+                </p>
+
+                <p className="font-bold text-[18px] mt-1">
+                  {order.TrainNumber}
+                </p>
+              </div>
+
+              <div>
+
+                <p className="text-gray-400 text-[13px]">
+                  Coach / Seat
+                </p>
+
+                <p className="font-bold text-[18px] mt-1">
+                  {order.Coach || "-"} / {order.Seat || "-"}
+                </p>
+              </div>
+
+              <div>
+
+                <p className="text-gray-400 text-[13px]">
+                  Delivery Date
+                </p>
+
+                <p className="font-semibold text-[16px] mt-1">
+                  {order.DeliveryDate}
+                </p>
+              </div>
+
+              <div>
+
+                <p className="text-gray-400 text-[13px]">
+                  Time
+                </p>
+
+                <p className="font-semibold text-[16px] mt-1">
+                  {order.DeliveryTime}
+                </p>
+              </div>
+            </div>
+
+            {/* BOTTOM */}
+
+            <div className="flex items-center justify-between mt-6">
+
+              <div className="bg-[#2f54eb] text-white px-4 py-2 rounded-xl text-[13px] font-semibold capitalize">
+                {order.Status}
+              </div>
+
+              <div className="text-[13px] text-gray-500">
+                {order.RestroName}
+              </div>
             </div>
           </div>
-        </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  {/* BOTTOM NAV */}
+
+  <div className="fixed bottom-0 left-0 right-0 bg-white border-t h-[72px] flex items-center justify-around z-50">
+
+    <button className="flex flex-col items-center text-[#2f54eb] font-semibold text-[13px]">
+      <span className="text-[22px]">📦</span>
+      Orders
+    </button>
+
+    <button
+      onClick={() => router.push("/profile")}
+      className="flex flex-col items-center text-gray-500 text-[13px]"
+    >
+      <span className="text-[22px]">👤</span>
+      Profile
+    </button>
+
+    <button
+      onClick={() => router.push("/delivery-settings")}
+      className="flex flex-col items-center text-gray-500 text-[13px]"
+    >
+      <span className="text-[22px]">⚙️</span>
+      Settings
+    </button>
+
+    <button
+      onClick={logout}
+      className="flex flex-col items-center text-red-500 text-[13px]"
+    >
+      <span className="text-[22px]">↩️</span>
+      Logout
+    </button>
+  </div>
+</div>
 
         {/* DESKTOP HEADER */}
 

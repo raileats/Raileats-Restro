@@ -13,7 +13,6 @@ export default function DeliverySettingsPage() {
   const router = useRouter();
 
   const [restro, setRestro] = useState<any>(null);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -40,7 +39,6 @@ export default function DeliverySettingsPage() {
       }
 
       const restroData = JSON.parse(stored);
-
       setRestro(restroData);
 
       const { data, error } = await supabase
@@ -61,7 +59,6 @@ export default function DeliverySettingsPage() {
       }
 
       setLoading(false);
-
     } catch (err) {
       console.log(err);
       setLoading(false);
@@ -92,7 +89,6 @@ export default function DeliverySettingsPage() {
       }
 
       alert("Settings Updated Successfully");
-
     } catch (err) {
       console.log(err);
       alert("Something went wrong");
@@ -108,71 +104,56 @@ export default function DeliverySettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f5f6fb] flex items-center justify-center text-xl font-bold">
-        Loading...
+      <div className="h-[100dvh] max-w-md mx-auto flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2 bg-[#f7f9fc]">
+        <span className="text-2xl animate-spin">⏳</span>
+        Loading Settings...
       </div>
     );
   }
 
-  return (<div className="h-[100dvh] max-w-md mx-auto bg-[#f5f6fb] overflow-y-auto pb-[95px] relative shadow-2xl border-x border-gray-100"><div className="min-h-screen bg-[#f5f6fb] pb-[90px]">
-
-      {/* HEADER */}
-
-      <div className="bg-white px-5 py-4 border-b border-gray-100 sticky top-0 z-40">
-        <div className="flex items-center justify-between">
-
-          <div className="flex items-center gap-3">
-
-            <img
-              src="/logo.png"
-              className="w-12 h-12 rounded-xl"
+  return (
+    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
+      
+      {/* 1. FIXED TOP APP HEADER (Exact Same UI as Orders Page) */}
+      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
+            <img 
+              src="/logo.png" 
+              alt="logo" 
+              className="w-full h-full object-cover" 
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-
-            <div>
-
-              <h1 className="text-[28px] font-bold leading-none">
-                RailEats
-              </h1>
-
-              <p className="text-gray-500 text-sm mt-1">
-                {restro?.RestroName}
-              </p>
-
-            </div>
+            RE
           </div>
-
-          <div className="bg-[#2f54eb] text-white w-[62px] h-[62px] rounded-2xl flex flex-col items-center justify-center shadow-lg">
-
-            <div className="text-[10px] opacity-80">
-              Code
-            </div>
-
-            <div className="text-xl font-bold">
-              {restro?.RestroCode}
-            </div>
-
+          <div className="min-w-0">
+            <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">RailEats</h1>
+            <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">{restro?.RestroName || "Mizaz E Bhopal"}</p>
           </div>
         </div>
+        
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[54px] text-center shadow-md shadow-blue-100">
+            Code {restro?.RestroCode}
+          </div>
+        </div>
+      </header>
+
+      {/* FIXED PAGE TITLE SEGMENT */}
+      <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full px-4">
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Settings</h2>
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Configure Delivery Preferences</p>
       </div>
 
-      {/* CONTENT */}
-
-      <div className="p-4">
-
-        <h1 className="text-[34px] font-bold mb-5">
-          Delivery Settings
-        </h1>
-
-        <div className="bg-white rounded-[30px] p-5 shadow-sm flex flex-col gap-5">
-
-          {/* ONLINE STATUS */}
-
+      {/* 2. MIDDLE FORM AREA (ONLY THIS PORTION SCROLLS) */}
+      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
+        <div className="bg-white rounded-3xl border border-gray-100/80 p-5 shadow-sm flex flex-col gap-4">
+          
+          {/* ONLINE / OFFLINE STATUS */}
           <div>
-
-            <label className="text-sm font-semibold text-gray-500">
+            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
               Raileats Status
             </label>
-
             <select
               value={form.RaileatsStatus ? "true" : "false"}
               onChange={(e) =>
@@ -181,174 +162,114 @@ export default function DeliverySettingsPage() {
                   RaileatsStatus: e.target.value === "true",
                 })
               }
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
+              className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
             >
-              <option value="true">Online</option>
-              <option value="false">Offline</option>
+              <option value="true">🟢 Online</option>
+              <option value="false">🔴 Offline</option>
             </select>
           </div>
 
           {/* WEEKLY OFF */}
-
           <div>
-
-            <label className="text-sm font-semibold text-gray-500">
+            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
               Weekly Off
             </label>
-
             <input
               type="text"
               value={form.WeeklyOff}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  WeeklyOff: e.target.value,
-                })
-              }
-              placeholder="Example : Sunday"
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
+              onChange={(e) => setForm({ ...form, WeeklyOff: e.target.value })}
+              placeholder="e.g. Sunday or noOff"
+              className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
             />
           </div>
 
-          {/* OPEN TIME */}
-
-          <div>
-
-            <label className="text-sm font-semibold text-gray-500">
-              Open Time
-            </label>
-
-            <input
-              type="time"
-              value={form.open_time}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  open_time: e.target.value,
-                })
-              }
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
-            />
+          {/* TIME CONTAINER GRID */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Open Time
+              </label>
+              <input
+                type="time"
+                value={form.open_time}
+                onChange={(e) => setForm({ ...form, open_time: e.target.value })}
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-3 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Closed Time
+              </label>
+              <input
+                type="time"
+                value={form.closed_time}
+                onChange={(e) => setForm({ ...form, closed_time: e.target.value })}
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-3 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
           </div>
 
-          {/* CLOSE TIME */}
-
-          <div>
-
-            <label className="text-sm font-semibold text-gray-500">
-              Closed Time
-            </label>
-
-            <input
-              type="time"
-              value={form.closed_time}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  closed_time: e.target.value,
-                })
-              }
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
-            />
+          {/* LOGISTICS CONTAINER GRID */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Min Order (₹)
+              </label>
+              <input
+                type="number"
+                value={form.MinimumOrderValue}
+                onChange={(e) => setForm({ ...form, MinimumOrderValue: e.target.value })}
+                placeholder="e.g. 99"
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Cut Off (Mins)
+              </label>
+              <input
+                type="number"
+                value={form.CutOffTime}
+                onChange={(e) => setForm({ ...form, CutOffTime: e.target.value })}
+                placeholder="e.g. 60"
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
           </div>
 
-          {/* MIN ORDER */}
+          {/* ACTION ACTIONS */}
+          <div className="pt-2 space-y-2.5">
+            <button
+              onClick={saveSettings}
+              disabled={saving}
+              className="w-full h-11 bg-[#2f54eb] hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md shadow-blue-100 transition duration-150 disabled:opacity-60 flex items-center justify-center tracking-wide"
+            >
+              {saving ? "SAVING CONFIGS..." : "SAVE SETTINGS"}
+            </button>
 
-          <div>
-
-            <label className="text-sm font-semibold text-gray-500">
-              Minimum Order Value
-            </label>
-
-            <input
-              type="number"
-              value={form.MinimumOrderValue}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  MinimumOrderValue: e.target.value,
-                })
-              }
-              placeholder="Minimum Order Value"
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
-            />
+            <button
+              onClick={logout}
+              className="w-full h-11 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-black rounded-xl transition duration-150 flex items-center justify-center tracking-wide"
+            >
+              LOGOUT FROM RESTRO
+            </button>
           </div>
-
-          {/* CUT OFF */}
-
-          <div>
-
-            <label className="text-sm font-semibold text-gray-500">
-              Cut Off Time
-            </label>
-
-            <input
-              type="number"
-              value={form.CutOffTime}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  CutOffTime: e.target.value,
-                })
-              }
-              placeholder="Cut Off Time"
-              className="w-full h-14 mt-2 rounded-2xl border px-4 text-lg font-semibold outline-none"
-            />
-          </div>
-
-          {/* SAVE */}
-
-          <button
-            onClick={saveSettings}
-            disabled={saving}
-            className="h-14 rounded-2xl bg-[#2f54eb] text-white text-lg font-bold mt-3"
-          >
-            {saving ? "Saving..." : "Save Settings"}
-          </button>
-
-          {/* LOGOUT */}
-
-          <button
-            onClick={logout}
-            className="h-14 rounded-2xl bg-red-50 text-red-500 text-lg font-bold"
-          >
-            Logout
-          </button>
 
         </div>
-      </div>
+      </main>
 
-            </div>
-
-      {/* BOTTOM NAVBAR */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full bg-white border-t h-[84px] flex items-center justify-around z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
-
-        <button
-          onClick={() => router.push("/orders")}
-          className="flex flex-col items-center text-gray-700"
+      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR (Exact Mirror of Orders Page) */}
+      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
+        <button 
+          onClick={() => router.push("/orders")} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
-          <span className="text-[24px]">📦</span>
-          <span className="text-xs mt-1">Orders</span>
+          <span className="text-xl">📋</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Orders</span>
         </button>
-
-        <button
-          className="flex flex-col items-center text-[#2f54eb]"
-        >
-          <span className="text-[24px]">⚙️</span>
-          <span className="text-xs mt-1 font-semibold">
-            Delivery
-          </span>
+        <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
+          <span className="text-xl">⚙️</span>
+          <span className="text-[10px] font-black mt-1 tracking-tight">Settings</span>
         </button>
-
-        <button
-          onClick={() => router.push("/profile")}
-          className="flex flex-col items-center text-gray-700"
-        >
-          <span className="text-[24px]">👤</span>
-          <span className="text-xs mt-1">Profile</span>
-        </button>
-
-      </div>
-    </div>
-  );
-}
+        <button 
+          onClick={() => router.

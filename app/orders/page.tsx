@@ -83,15 +83,53 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter((item) => {
-    const status = item.Status?.toLowerCase().trim();
-    if (activeTab === "In Kitchen" && status === "inkitchen") return true;
-    if (activeTab === "Out for Delivery" && status === "outfordelivery") return true;
-    if (activeTab === "Delivered" && status === "delivered") return true;
-    if (activeTab === "Cancelled" && status === "cancelled") return true;
-    if (activeTab === "Not Delivered" && status === "notdelivered") return true;
-    if (activeTab === "Bad Delivery" && status === "baddelivery") return true;
-    return false;
-  });
+
+  const status = item.Status?.toLowerCase().trim();
+
+  if (
+    activeTab === "In Kitchen" &&
+    status === "in kitchen"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Out for Delivery" &&
+    status === "out for delivery"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Delivered" &&
+    status === "delivered"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Cancelled" &&
+    status === "cancelled"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Not Delivered" &&
+    status === "not delivered"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Bad Delivery" &&
+    status === "bad delivery"
+  ) {
+    return true;
+  }
+
+  return false;
+});
 
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">

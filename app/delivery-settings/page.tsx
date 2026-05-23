@@ -272,4 +272,21 @@ export default function DeliverySettingsPage() {
           <span className="text-[10px] font-black mt-1 tracking-tight">Settings</span>
         </button>
         <button 
-          onClick={() => router.
+          onClick={() => router.push("/profile")} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
+        >
+          <span className="text-xl">👤</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
+        </button>
+        <button 
+          onClick={logout} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-red-400 hover:text-red-500 transition"
+        >
+          <span className="text-xl">🚪</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Logout</span>
+        </button>
+      </nav>
+
+    </div>
+  );
+}

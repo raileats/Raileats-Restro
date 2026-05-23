@@ -1,99 +1,179 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function OrdersPage() {
+  const router = useRouter();
+
   const [restro, setRestro] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("In Kitchen");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const data = localStorage.getItem("restro");
-
-    if (!data) {
-      window.location.href = "/";
-      return;
-    }
-
-    setRestro(JSON.parse(data));
+    loadData();
   }, []);
 
-  if (!restro) {
-    return null;
+  async function loadData() {
+    try {
+      const stored = localStorage.getItem("restro");
+
+      if (!stored) {
+        router.push("/");
+        return;
+      }
+
+      const restroData = JSON.parse(stored);
+
+      setRestro(restroData);
+
+      // ===============================
+      // FETCH ORDERS FROM SUPABASE
+      // ===============================
+
+      const { data, error } = await supabase
+        .from("Orders")
+        .select("*")
+        .eq("OutletID", restroData.RestroCode)
+        .order("CreatedAt", { ascending: false });
+
+      console.log(data);
+
+      if (!error && data) {
+        setOrders(data);
+      }
+
+      setLoading(false);
+
+    } catch (err) {
+      console.log(err);
+      setLoading(false);
+    }
   }
+
+  function logout() {
+    localStorage.removeItem("restro");
+    router.push("/");
+  }
+
+  // ====================================
+  // FILTER ORDERS
+  // ====================================
+
+  const filteredOrders = orders.filter((item) => {
+
+    const status =
+      item.OrderStatus ||
+      item.status ||
+      item.order_status;
+
+    return status === activeTab;
+  });
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex">
 
       {/* SIDEBAR */}
-      <div className="w-[250px] bg-white border-r min-h-screen">
 
-        <div className="p-5 border-b">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              className="w-[42px] h-[42px]"
-            />
+      <div className="w-[280px] bg-white border-r min-h-screen">
 
-            <div>
-              <h2 className="font-semibold text-[20px]">
-                RailEats
-              </h2>
+        {/* HEADER */}
 
-              <p className="text-gray-500 text-sm">
-                Restro Panel
-              </p>
-            </div>
+        <div className="h-[92px] border-b flex items-center px-6 gap-4">
+
+          <img
+            src="/logo.png"
+            alt="logo"
+            className="w-[52px] h-[52px]"
+          />
+
+          <div>
+            <h1 className="text-[32px] font-bold leading-none">
+              RailEats
+            </h1>
+
+            <p className="text-gray-500">
+              Restro Panel
+            </p>
           </div>
         </div>
 
+        {/* MENU */}
+
         <div className="p-4 flex flex-col gap-3">
 
-          <button className="text-left h-[46px] px-4 rounded-lg bg-[#1d4ed8] text-white font-medium">
+          <button className="bg-[#2f54eb] text-white h-[54px] rounded-xl text-left px-5 font-semibold text-[18px]">
             Orders
           </button>
 
-          <button className="text-left h-[46px] px-4 rounded-lg hover:bg-gray-100">
+          <button
+            onClick={() => router.push("/profile")}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+          >
             Restro Profile
           </button>
 
-          <button className="text-left h-[46px] px-4 rounded-lg hover:bg-gray-100">
+          <button
+            onClick={() => router.push("/delivery-settings")}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-gray-100 text-[18px]"
+          >
             Delivery Settings
           </button>
 
           <button
-            onClick={() => {
-              localStorage.removeItem("restro");
-              window.location.href = "/";
-            }}
-            className="text-left h-[46px] px-4 rounded-lg hover:bg-red-50 text-red-600"
+            onClick={logout}
+            className="h-[54px] rounded-xl text-left px-5 hover:bg-red-50 text-red-500 text-[18px]"
           >
             Logout
           </button>
-
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="flex-1 p-8">
+      {/* MAIN SECTION */}
 
-        <div className="flex items-center justify-between mb-8">
+      <div className="flex-1 p-10">
+
+        {/* TOP HEADER */}
+
+        <div className="flex items-start justify-between mb-10">
 
           <div>
-            <h1 className="text-[36px] font-bold">
+
+            <h1 className="text-5xl font-bold">
               Orders
             </h1>
 
-            <p className="text-gray-500 mt-1">
-              Welcome {restro.RestroName}
+            <p className="text-gray-500 mt-4 text-xl">
+              Welcome {restro?.RestroName}
+            </p>
+
+            <p className="text-gray-500 text-lg mt-1">
+              Station Code : {restro?.StationCode}
             </p>
           </div>
 
-          <div className="bg-white px-5 py-3 rounded-xl shadow-sm">
-            Restro Code: {restro.RestroCode}
+          <div className="bg-white border rounded-2xl px-8 py-5 shadow-sm">
+
+            <div className="text-gray-500 text-sm">
+              Restro Code
+            </div>
+
+            <div className="text-3xl font-bold">
+              {restro?.RestroCode}
+            </div>
           </div>
         </div>
 
-        {/* STATUS TABS */}
-        <div className="flex gap-3 flex-wrap mb-8">
+        {/* STATUS BUTTONS */}
+
+        <div className="flex flex-wrap gap-4 mb-8">
 
           {[
             "In Kitchen",
@@ -102,28 +182,124 @@ export default function OrdersPage() {
             "Cancelled",
             "Not Delivered",
             "Bad Delivery",
-          ].map((item) => (
+          ].map((status) => (
+
             <button
-              key={item}
-              className="px-5 h-[44px] rounded-lg bg-[#1d4ed8] text-white font-medium"
+              key={status}
+              onClick={() => setActiveTab(status)}
+              className={`px-7 py-4 rounded-xl font-semibold transition ${
+                activeTab === status
+                  ? "bg-[#2f54eb] text-white"
+                  : "bg-white border"
+              }`}
             >
-              {item}
+              {status}
             </button>
           ))}
         </div>
 
-        {/* EMPTY STATE */}
-        <div className="bg-white rounded-2xl p-12 text-center shadow-sm">
+        {/* TABLE */}
 
-          <h2 className="text-2xl font-semibold mb-3">
-            No Orders Yet
-          </h2>
+        <div className="bg-white rounded-2xl shadow-sm border overflow-auto">
 
-          <p className="text-gray-500">
-            Orders for this restro will appear here.
-          </p>
+          {loading ? (
+
+            <div className="p-20 text-center text-2xl">
+              Loading...
+            </div>
+
+          ) : filteredOrders.length === 0 ? (
+
+            <div className="p-20 text-center">
+
+              <h2 className="text-4xl font-bold mb-4">
+                No Orders Yet
+              </h2>
+
+              <p className="text-gray-500 text-lg">
+                Orders for this restro will appear here.
+              </p>
+            </div>
+
+          ) : (
+
+            <table className="w-full">
+
+              <thead className="bg-gray-50 border-b">
+
+                <tr className="text-left">
+
+                  <th className="p-5">Order ID</th>
+                  <th className="p-5">Outlet</th>
+                  <th className="p-5">Train</th>
+                  <th className="p-5">Coach</th>
+                  <th className="p-5">Seat</th>
+                  <th className="p-5">Customer</th>
+                  <th className="p-5">Mobile</th>
+                  <th className="p-5">Date</th>
+                  <th className="p-5">Time</th>
+                  <th className="p-5">Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {filteredOrders.map((item, index) => (
+
+                  <tr
+                    key={index}
+                    className="border-b hover:bg-gray-50"
+                  >
+
+                    <td className="p-5 font-medium">
+                      {item.OrderID}
+                    </td>
+
+                    <td className="p-5">
+                      {item.OutletName}
+                    </td>
+
+                    <td className="p-5">
+                      {item.TrainNo}
+                    </td>
+
+                    <td className="p-5">
+                      {item.Coach}
+                    </td>
+
+                    <td className="p-5">
+                      {item.Seat}
+                    </td>
+
+                    <td className="p-5">
+                      {item.CustomerName}
+                    </td>
+
+                    <td className="p-5">
+                      {item.CustomerMobile}
+                    </td>
+
+                    <td className="p-5">
+                      {item.DeliveryDate}
+                    </td>
+
+                    <td className="p-5">
+                      {item.DeliveryTime}
+                    </td>
+
+                    <td className="p-5">
+
+                      <span className="bg-[#2f54eb] text-white px-4 py-2 rounded-lg text-sm">
+                        {item.OrderStatus}
+                      </span>
+
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,12 +11,26 @@ const supabase = createClient(
 
 export default function OrdersPage() {
   const router = useRouter();
-  const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   const [restro, setRestro] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("Out for Delivery");
   const [loading, setLoading] = useState(true);
+  
+  // टैब पेजिनेशन स्टेट (एक बार में सिर्फ 2 टैब दिखाने के लिए)
+  const [tabSet, setTabSet] = useState(0);
+
+  const allTabs = [
+    { label: "In Kitchen", icon: "🍳" },
+    { label: "Out for Delivery", icon: "🛵" },
+    { label: "Delivered", icon: "✅" },
+    { label: "Cancelled", icon: "❌" },
+    { label: "Not Delivered", icon: "⚠️" },
+    { label: "Bad Delivery", icon: "🚨" }
+  ];
+
+  // अभी कौन से दो टैब दिखेंगे
+  const visibleTabs = allTabs.slice(tabSet * 2, (tabSet * 2) + 2);
 
   useEffect(() => {
     loadData();
@@ -57,14 +71,19 @@ export default function OrdersPage() {
     router.push("/");
   }
 
-  // Horizontal Tab Scroll Functions
-  const scrollTabs = (direction: "left" | "right") => {
-    if (tabsContainerRef.current) {
-      const scrollAmount = 160;
-      tabsContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
+  const handleNextTabs = () => {
+    if ((tabSet * 2) + 2 < allTabs.length) {
+      setTabSet(tabSet + 1);
+    } else {
+      setTabSet(0); // वापस पहले सेट पर आ जाएँ
+    }
+  };
+
+  const handlePrevTabs = () => {
+    if (tabSet > 0) {
+      setTabSet(tabSet - 1);
+    } else {
+      setTabSet(Math.floor((allTabs.length - 1) / 2)); // आखरी सेट पर जाएँ
     }
   };
 
@@ -80,7 +99,7 @@ export default function OrdersPage() {
   });
 
   return (
-    <div className="h-[100dvh] max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-pan-y">
+    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
       
       {/* 1. FIXED TOP APP HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
@@ -111,69 +130,59 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      {/* FIXED META & NAVIGATION ARROW TABS CONTROLLER */}
-      <div className="bg-white flex-shrink-0 pt-3 pb-2 border-b border-gray-100 z-40">
+      {/* FIXED META & PACKED CONTROL TABS */}
+      <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full">
         {/* STATION META */}
-        <div className="px-4 mb-2.5">
+        <div className="px-4 mb-3">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Orders</h2>
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
             Station : <span className="text-[#2f54eb] font-extrabold">{restro?.StationCode || "BPL"}</span>
           </p>
         </div>
 
-        {/* TABS CAROUSEL CONTAINER WITH < > ARROWS */}
-        <div className="relative flex items-center px-2">
-          {/* Left Arrow */}
+        {/* CONTROLS: EXACTLY TWO TABS AT A TIME */}
+        <div className="flex items-center justify-between px-4 gap-2 w-full">
+          {/* Left Arrow Button */}
           <button 
-            onClick={() => scrollTabs("left")}
-            className="w-7 h-8 bg-gradient-to-r from-white via-white to-transparent absolute left-1 z-10 flex items-center justify-start text-gray-800 text-sm font-black active:scale-95"
+            onClick={handlePrevTabs}
+            className="w-8 h-9 bg-gray-50 border border-gray-200/70 active:bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 font-black flex-shrink-0 text-xs shadow-sm"
           >
             ❮
           </button>
 
-          {/* Horizontally Scrollable Middle Segment */}
-          <div 
-            ref={tabsContainerRef}
-            className="flex gap-2 overflow-x-auto px-6 scrollbar-none snap-x w-full scroll-smooth"
-          >
-            {[
-              { label: "In Kitchen", icon: "🍳" },
-              { label: "Out for Delivery", icon: "🛵" },
-              { label: "Delivered", icon: "✅" },
-              { label: "Cancelled", icon: "❌" },
-              { label: "Not Delivered", icon: "⚠️" },
-              { label: "Bad Delivery", icon: "🚨" }
-            ].map((tab) => {
+          {/* Active Grid Container for Two Items */}
+          <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
+            {visibleTabs.map((tab) => {
               const isActive = activeTab === tab.label;
               return (
                 <button
                   key={tab.label}
                   onClick={() => setActiveTab(tab.label)}
-                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-150 snap-center ${
+                  className={`w-full truncate text-ellipsis px-2 py-2 rounded-xl text-xs font-bold border transition-all duration-150 flex items-center justify-center gap-1.5 ${
                     isActive
                       ? "bg-[#2f54eb] text-white border-[#2f54eb] shadow-sm shadow-blue-100"
-                      : "bg-gray-50 text-gray-600 border-gray-200/60 hover:bg-gray-100"
+                      : "bg-gray-50 text-gray-600 border-gray-200/80 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="mr-1">{tab.icon}</span>
-                  {tab.label}
+                  <span className="flex-shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Right Arrow */}
+          {/* Right Arrow Button */}
           <button 
-            onClick={() => scrollTabs("right")}
-            className="w-7 h-8 bg-gradient-to-l from-white via-white to-transparent absolute right-1 z-10 flex items-center justify-end text-gray-800 text-sm font-black active:scale-95"
+            onClick={handleNextTabs}
+            className="w-8 h-9 bg-gray-50 border border-gray-200/70 active:bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 font-black flex-shrink-0 text-xs shadow-sm"
           >
             ❯
           </button>
         </div>
       </div>
 
-      {/* 2. MAIN ORDERS COMPONENT (ONLY THIS WRAPPER SCROLLS UP/DOWN) */}
-      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 scroll-smooth">
+      {/* 2. SCROLLABLE MIDDLE MAIN CONTENT VIEW */}
+      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2">
             <span className="text-2xl animate-spin">⏳</span>
@@ -220,95 +229,4 @@ export default function OrdersPage() {
                     href={`tel:${item.CustomerMobile}`} 
                     className="w-9 h-9 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center justify-center transition flex-shrink-0"
                   >
-                    <svg className="w-3.5 h-3.5 text-[#2f54eb]" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-1C7.82 18 2 12.18 2 5V3z"/>
-                    </svg>
-                  </a>
-                )}
-              </div>
-
-              {/* Grid Logistics Block */}
-              <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">🚂</span>
-                  <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Train</p>
-                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.TrainNumber}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">💺</span>
-                  <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Coach/Seat</p>
-                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.Coach} / {item.Seat}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">📅</span>
-                  <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</p>
-                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryDate}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">🕒</span>
-                  <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Time</p>
-                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryTime}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer CTA Trigger */}
-              <div className="flex items-center justify-between border-t border-gray-50 pt-3 mt-0.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 min-w-0">
-                  <span className="text-sm">🏪</span>
-                  <span className="truncate max-w-[140px]">{item.RestroName}</span>
-                </div>
-                <button className="bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-[11px] font-black text-[#2f54eb] flex items-center gap-0.5 transition flex-shrink-0">
-                  View Details
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </main>
-
-      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR */}
-      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
-        <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
-          <span className="text-xl">📋</span>
-          <span className="text-[10px] font-black mt-1 tracking-tight">Orders</span>
-        </button>
-        <button 
-          onClick={() => router.push("/delivery-settings")} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
-        >
-          <span className="text-xl">⚙️</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Settings</span>
-        </button>
-        <button 
-          onClick={() => router.push("/profile")} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
-        >
-          <span className="text-xl">👤</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
-        </button>
-        <button 
-          onClick={logout} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-red-400 hover:text-red-500 transition"
-        >
-          <span className="text-xl">🚪</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Logout</span>
-        </button>
-      </nav>
-
-    </div>
-  );
-}
+                    <svg className="w-3.5 h-3.5 text-[#2f54eb]" fill="currentColor" viewBox="0

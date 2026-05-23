@@ -66,19 +66,9 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter((item) => {
 
-    const status = item.Status;
+  return item.Status === activeTab;
 
-    // BOOKED = IN KITCHEN
-
-    if (
-      activeTab === "In Kitchen" &&
-      status === "Booked"
-    ) {
-      return true;
-    }
-
-    return status === activeTab;
-  });
+});
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex">

@@ -66,8 +66,51 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter((item) => {
 
-  return item.Status === activeTab;
+  const status = item.Status?.toLowerCase().trim();
 
+  if (
+    activeTab === "In Kitchen" &&
+    (status === "booked" || status === "inkitchen")
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Out for Delivery" &&
+    status === "outfordelivery"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Delivered" &&
+    status === "delivered"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Cancelled" &&
+    status === "cancelled"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Not Delivered" &&
+    status === "notdelivered"
+  ) {
+    return true;
+  }
+
+  if (
+    activeTab === "Bad Delivery" &&
+    status === "baddelivery"
+  ) {
+    return true;
+  }
+
+  return false;
 });
 
   return (

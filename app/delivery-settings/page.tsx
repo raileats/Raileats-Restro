@@ -318,45 +318,34 @@ export default function DeliverySettingsPage() {
         </div>
       </div>
 
-      {/* BOTTOM NAV */}
+            </div>
 
+      {/* BOTTOM NAVBAR */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full bg-white border-t h-[84px] flex items-center justify-around z-50 shadow-[0_-2px_20px_rgba(0,0,0,0.06)]">
+
         <button
           onClick={() => router.push("/orders")}
           className="flex flex-col items-center text-gray-700"
         >
-          <span className="text-[24px]">
-            📦
-          </span>
-
-          <span className="text-[13px] mt-1">
-            Orders
-          </span>
+          <span className="text-[24px]">📦</span>
+          <span className="text-xs mt-1">Orders</span>
         </button>
 
-        <button className="flex flex-col items-center text-[#2f54eb] font-semibold">
-
-          <span className="text-[24px]">
-            ⚙️
-          </span>
-
-          <span className="text-[13px] mt-1">
+        <button
+          className="flex flex-col items-center text-[#2f54eb]"
+        >
+          <span className="text-[24px]">⚙️</span>
+          <span className="text-xs mt-1 font-semibold">
             Delivery
           </span>
-
         </button>
 
         <button
           onClick={() => router.push("/profile")}
           className="flex flex-col items-center text-gray-700"
         >
-          <span className="text-[24px]">
-            👤
-          </span>
-
-          <span className="text-[13px] mt-1">
-            Profile
-          </span>
+          <span className="text-[24px]">👤</span>
+          <span className="text-xs mt-1">Profile</span>
         </button>
 
       </div>

@@ -258,7 +258,7 @@ export default function DeliverySettingsPage() {
         </div>
       </main>
 
-      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR (Exact Mirror of Orders Page) */}
+      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR WITH MENU TAB */}
       <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
         <button 
           onClick={() => router.push("/orders")} 
@@ -267,23 +267,26 @@ export default function DeliverySettingsPage() {
           <span className="text-xl">📋</span>
           <span className="text-[10px] font-bold mt-1 tracking-tight">Orders</span>
         </button>
+        
+        <button 
+          onClick={() => router.push("/menu")} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
+        >
+          <span className="text-xl">🍽️</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Menu</span>
+        </button>
+
         <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
           <span className="text-xl">⚙️</span>
           <span className="text-[10px] font-black mt-1 tracking-tight">Settings</span>
         </button>
+        
         <button 
           onClick={() => router.push("/profile")} 
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
           <span className="text-xl">👤</span>
           <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
-        </button>
-        <button 
-          onClick={logout} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-red-400 hover:text-red-500 transition"
-        >
-          <span className="text-xl">🚪</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Logout</span>
         </button>
       </nav>
 

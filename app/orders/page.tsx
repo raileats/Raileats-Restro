@@ -229,4 +229,95 @@ export default function OrdersPage() {
                     href={`tel:${item.CustomerMobile}`} 
                     className="w-9 h-9 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center justify-center transition flex-shrink-0"
                   >
-                    <svg className="w-3.5 h-3.5 text-[#2f54eb]" fill="currentColor" viewBox="0
+                    <svg className="w-3.5 h-3.5 text-[#2f54eb]" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-1C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+
+              {/* Grid Logistics Block */}
+              <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">🚂</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Train</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.TrainNumber}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">💺</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Coach/Seat</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.Coach} / {item.Seat}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">📅</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryDate}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">🕒</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Time</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryTime}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer CTA Trigger */}
+              <div className="flex items-center justify-between border-t border-gray-50 pt-3 mt-0.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 min-w-0">
+                  <span className="text-sm">🏪</span>
+                  <span className="truncate max-w-[140px]">{item.RestroName}</span>
+                </div>
+                <button className="bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-[11px] font-black text-[#2f54eb] flex items-center gap-0.5 transition flex-shrink-0">
+                  View Details
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </main>
+
+      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR */}
+      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
+        <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
+          <span className="text-xl">📋</span>
+          <span className="text-[10px] font-black mt-1 tracking-tight">Orders</span>
+        </button>
+        <button 
+          onClick={() => router.push("/delivery-settings")} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
+        >
+          <span className="text-xl">⚙️</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Settings</span>
+        </button>
+        <button 
+          onClick={() => router.push("/profile")} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
+        >
+          <span className="text-xl">👤</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
+        </button>
+        <button 
+          onClick={logout} 
+          className="flex flex-col items-center justify-center flex-1 h-full text-red-400 hover:text-red-500 transition"
+        >
+          <span className="text-xl">🚪</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">Logout</span>
+        </button>
+      </nav>
+
+    </div>
+  );
+}

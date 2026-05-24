@@ -112,26 +112,34 @@ export default function DeliverySettingsPage() {
   }
 
   return (
-    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
-      
-      {/* 1. FIXED TOP APP HEADER (Exact Same UI as Orders Page) */}
+    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl">
+
+      {/* HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
-            <img 
-              src="/logo.png" 
-              alt="logo" 
-              className="w-full h-full object-cover" 
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            <img
+              src="/logo.png"
+              alt="logo"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
             RE
           </div>
+
           <div className="min-w-0">
-            <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">RailEats</h1>
-            <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">{restro?.RestroName || "Mizaz E Bhopal"}</p>
+            <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">
+              RailEats
+            </h1>
+
+            <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">
+              {restro?.RestroName || "Mizaz E Bhopal"}
+            </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[54px] text-center shadow-md shadow-blue-100">
             Code {restro?.RestroCode}
@@ -139,21 +147,28 @@ export default function DeliverySettingsPage() {
         </div>
       </header>
 
-      {/* FIXED PAGE TITLE SEGMENT */}
+      {/* TITLE */}
       <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full px-4">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Settings</h2>
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Configure Delivery Preferences</p>
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+          Settings
+        </h2>
+
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+          Configure Delivery Preferences
+        </p>
       </div>
 
-      {/* 2. MIDDLE FORM AREA (ONLY THIS PORTION SCROLLS) */}
-      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
+      {/* CONTENT */}
+      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-pan-y">
+
         <div className="bg-white rounded-3xl border border-gray-100/80 p-5 shadow-sm flex flex-col gap-4">
-          
-          {/* ONLINE / OFFLINE STATUS */}
+
+          {/* STATUS */}
           <div>
             <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
               Raileats Status
             </label>
+
             <select
               value={form.RaileatsStatus ? "true" : "false"}
               onChange={(e) =>
@@ -174,71 +189,108 @@ export default function DeliverySettingsPage() {
             <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
               Weekly Off
             </label>
+
             <input
               type="text"
               value={form.WeeklyOff}
-              onChange={(e) => setForm({ ...form, WeeklyOff: e.target.value })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  WeeklyOff: e.target.value,
+                })
+              }
               placeholder="e.g. Sunday or noOff"
               className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
             />
           </div>
 
-          {/* TIME CONTAINER GRID */}
+          {/* TIME */}
           <div className="grid grid-cols-2 gap-3">
+
             <div>
               <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
                 Open Time
               </label>
+
               <input
                 type="time"
                 value={form.open_time}
-                onChange={(e) => setForm({ ...form, open_time: e.target.value })}
-                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-3 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    open_time: e.target.value,
+                  })
+                }
+                className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm font-bold outline-none focus:border-[#2f54eb] focus:ring-2 focus:ring-blue-100 transition-all text-gray-800"
               />
             </div>
+
             <div>
               <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
                 Closed Time
               </label>
+
               <input
                 type="time"
                 value={form.closed_time}
-                onChange={(e) => setForm({ ...form, closed_time: e.target.value })}
-                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-3 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    closed_time: e.target.value,
+                  })
+                }
+                className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm font-bold outline-none focus:border-[#2f54eb] focus:ring-2 focus:ring-blue-100 transition-all text-gray-800"
               />
             </div>
+
           </div>
 
-          {/* LOGISTICS CONTAINER GRID */}
+          {/* ORDER */}
           <div className="grid grid-cols-2 gap-3">
+
             <div>
               <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
                 Min Order (₹)
               </label>
+
               <input
                 type="number"
                 value={form.MinimumOrderValue}
-                onChange={(e) => setForm({ ...form, MinimumOrderValue: e.target.value })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    MinimumOrderValue: e.target.value,
+                  })
+                }
                 placeholder="e.g. 99"
                 className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
               />
             </div>
+
             <div>
               <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
                 Cut Off (Mins)
               </label>
+
               <input
                 type="number"
                 value={form.CutOffTime}
-                onChange={(e) => setForm({ ...form, CutOffTime: e.target.value })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    CutOffTime: e.target.value,
+                  })
+                }
                 placeholder="e.g. 60"
                 className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
               />
             </div>
+
           </div>
 
-          {/* ACTION ACTIONS */}
+          {/* BUTTONS */}
           <div className="pt-2 space-y-2.5">
+
             <button
               onClick={saveSettings}
               disabled={saving}
@@ -253,41 +305,53 @@ export default function DeliverySettingsPage() {
             >
               LOGOUT FROM RESTRO
             </button>
+
           </div>
 
         </div>
+
       </main>
 
-      {/* 3. ALWAYS FIXED BOTTOM NAVIGATION BAR WITH MENU TAB */}
+      {/* BOTTOM NAV */}
       <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
-        <button 
-          onClick={() => router.push("/orders")} 
+
+        <button
+          onClick={() => router.push("/orders")}
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
           <span className="text-xl">📋</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Orders</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">
+            Orders
+          </span>
         </button>
-        
-        <button 
-          onClick={() => router.push("/menu")} 
+
+        <button
+          onClick={() => router.push("/menu")}
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
           <span className="text-xl">🍽️</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Menu</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">
+            Menu
+          </span>
         </button>
 
         <button className="flex flex-col items-center justify-center flex-1 h-full text-[#2f54eb]">
           <span className="text-xl">⚙️</span>
-          <span className="text-[10px] font-black mt-1 tracking-tight">Settings</span>
+          <span className="text-[10px] font-black mt-1 tracking-tight">
+            Settings
+          </span>
         </button>
-        
-        <button 
-          onClick={() => router.push("/profile")} 
+
+        <button
+          onClick={() => router.push("/profile")}
           className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
         >
           <span className="text-xl">👤</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
+          <span className="text-[10px] font-bold mt-1 tracking-tight">
+            Profile
+          </span>
         </button>
+
       </nav>
 
     </div>

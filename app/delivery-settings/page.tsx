@@ -18,7 +18,7 @@ export default function DeliverySettingsPage() {
 
   const [form, setForm] = useState({
     RaileatsStatus: true,
-    WeeklyOff: "",
+    WeeklyOff: "noOff",
     open_time: "",
     closed_time: "",
     MinimumOrderValue: "",
@@ -50,7 +50,7 @@ export default function DeliverySettingsPage() {
       if (!error && data) {
         setForm({
           RaileatsStatus: data.RaileatsStatus ?? true,
-          WeeklyOff: data.WeeklyOff || "",
+          WeeklyOff: data.WeeklyOff || "noOff",
           open_time: data.open_time || "",
           closed_time: data.closed_time || "",
           MinimumOrderValue: data.MinimumOrderValue || "",
@@ -190,8 +190,7 @@ export default function DeliverySettingsPage() {
               Weekly Off
             </label>
 
-            <input
-              type="text"
+            <select
               value={form.WeeklyOff}
               onChange={(e) =>
                 setForm({
@@ -199,9 +198,17 @@ export default function DeliverySettingsPage() {
                   WeeklyOff: e.target.value,
                 })
               }
-              placeholder="e.g. Sunday or noOff"
               className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
-            />
+            >
+              <option value="noOff">No Off</option>
+              <option value="SUN">Sunday</option>
+              <option value="MON">Monday</option>
+              <option value="TUE">Tuesday</option>
+              <option value="WED">Wednesday</option>
+              <option value="THU">Thursday</option>
+              <option value="FRI">Friday</option>
+              <option value="SAT">Saturday</option>
+            </select>
           </div>
 
           {/* TIME */}

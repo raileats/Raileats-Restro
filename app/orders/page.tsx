@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -16,6 +16,21 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("New Order");
   const [loading, setLoading] = useState(true);
+  const [newOrderCount, setNewOrderCount] = useState<number>(() => {
+
+  if (typeof window !== "undefined") {
+
+    return Number(
+      localStorage.getItem("restro_new_orders") || 0
+    );
+
+  }
+
+  return 0;
+
+});
+
+const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // टैब पेजिनेशन स्टेट (एक बार में सिर्फ 2 टैब दिखाने के लिए)
   const [tabSet, setTabSet] = useState(0);
@@ -36,6 +51,171 @@ export default function OrdersPage() {
   useEffect(() => {
     loadData();
   }, []);
+  /* ================= INIT SOUND ================= */
+
+useEffect(() => {
+
+  audioRef.current = new Audio("/sounds/new-order.mp3");
+
+  audioRef.current.preload = "auto";
+
+  document.body.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        if (audioRef.current) {
+
+          audioRef.current.muted = true;
+
+          await audioRef.current.play();
+
+          audioRef.current.pause();
+
+          audioRef.current.currentTime = 0;
+
+          audioRef.current.muted = false;
+
+        }
+
+      } catch (e) {}
+
+    },
+    { once: true }
+  );
+
+  if (Notification.permission !== "granted") {
+
+    Notification.requestPermission();
+
+  }
+
+}, []);
+  useEffect(() => {
+  loadData();
+}, []);
+
+/* ================= REALTIME NEW ORDER ================= */
+
+useEffect(() => {
+
+  if (!restro?.RestroCode) return;
+
+  const channel = supabase
+
+    .channel("restro-live-orders")
+
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "Orders",
+      },
+
+      async (payload) => {
+
+        const newData: any = payload.new;
+
+        if (
+          Number(newData.RestroCode) !==
+          Number(restro.RestroCode)
+        ) {
+          return;
+        }
+
+        const status = String(
+          newData.Status || ""
+        )
+          .toLowerCase()
+          .trim();
+
+        if (
+          status !== "new order"
+        ) {
+          return;
+        }
+
+        console.log(
+          "RESTRO NEW ORDER:",
+          payload
+        );
+
+        setNewOrderCount((prev) => {
+
+          const updated = prev + 1;
+
+          localStorage.setItem(
+            "restro_new_orders",
+            String(updated)
+          );
+
+          return updated;
+
+        });
+
+        try {
+
+          if (audioRef.current) {
+
+            audioRef.current.currentTime = 0;
+
+            await audioRef.current.play();
+
+          }
+
+        } catch (e) {}
+
+        try {
+
+          if (
+            Notification.permission ===
+            "granted"
+          ) {
+
+            new Notification(
+              "🚆 New RailEats Order",
+              {
+                body:
+                  `${newData.CustomerName || "Customer"} • ${newData.StationName || ""}`,
+              }
+            );
+
+          }
+
+        } catch (e) {}
+
+        loadData();
+
+      }
+
+    )
+
+    .subscribe();
+
+  return () => {
+
+    supabase.removeChannel(channel);
+
+  };
+
+}, [restro]);
+  }, [restro]);
+
+/* ================= AUTO REFRESH ================= */
+
+useEffect(() => {
+
+  const interval = setInterval(() => {
+
+    loadData();
+
+  }, 30000);
+
+  return () => clearInterval(interval);
+
+}, [restro]);
 
   async function loadData() {
     try {
@@ -145,33 +325,70 @@ export default function OrdersPage() {
     <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
       
       {/* 1. FIXED TOP APP HEADER */}
-      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
-            <img 
-              src="/logo.png" 
-              alt="logo" 
-              className="w-full h-full object-cover" 
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-            RE
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">RailEats</h1>
-            <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">{restro?.RestroName || "Mizaz E Bhopal"}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[28px] text-center">
-            {filteredOrders.length}
-          </div>
-          <button className="relative w-9 h-9 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-base">
-            🔔
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-        </div>
-      </header>
+<header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
+
+  <div className="flex items-center gap-3">
+
+    <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
+      <img 
+        src="/logo.png" 
+        alt="logo" 
+        className="w-full h-full object-cover" 
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
+      RE
+    </div>
+
+    <div className="min-w-0">
+      <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">
+        RailEats
+      </h1>
+
+      <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">
+        {restro?.RestroName || "Mizaz E Bhopal"}
+      </p>
+    </div>
+
+  </div>
+  
+  <div className="flex items-center gap-2 flex-shrink-0">
+
+    <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[28px] text-center">
+      {filteredOrders.length}
+    </div>
+
+    <button
+      onClick={() => {
+
+        setNewOrderCount(0);
+
+        localStorage.removeItem(
+          "restro_new_orders"
+        );
+
+        setActiveTab("New Order");
+
+      }}
+      className="relative w-9 h-9 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-base"
+    >
+
+      🔔
+
+      {newOrderCount > 0 && (
+
+        <span
+          className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+        >
+          {newOrderCount}
+        </span>
+
+      )}
+
+    </button>
+
+  </div>
+
+</header>
 
       {/* FIXED META & PACKED CONTROL TABS */}
       <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full">

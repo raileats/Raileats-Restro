@@ -14,20 +14,21 @@ export default function OrdersPage() {
 
   const [restro, setRestro] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState("Out for Delivery");
+  const [activeTab, setActiveTab] = useState("New Order");
   const [loading, setLoading] = useState(true);
   
   // टैब पेजिनेशन स्टेट (एक बार में सिर्फ 2 टैब दिखाने के लिए)
   const [tabSet, setTabSet] = useState(0);
 
   const allTabs = [
-    { label: "In Kitchen", icon: "🍳" },
-    { label: "Out for Delivery", icon: "🛵" },
-    { label: "Delivered", icon: "✅" },
-    { label: "Cancelled", icon: "❌" },
-    { label: "Not Delivered", icon: "⚠️" },
-    { label: "Bad Delivery", icon: "🚨" }
-  ];
+  { label: "New Order", icon: "🔔" },
+  { label: "In Kitchen", icon: "🍳" },
+  { label: "Out for Delivery", icon: "🛵" },
+  { label: "Delivered", icon: "✅" },
+  { label: "Cancelled", icon: "❌" },
+  { label: "Not Delivered", icon: "⚠️" },
+  { label: "Bad Delivery", icon: "🚨" }
+];
 
   // अभी कौन से दो टैब दिखेंगे
   const visibleTabs = allTabs.slice(tabSet * 2, (tabSet * 2) + 2);
@@ -85,6 +86,15 @@ export default function OrdersPage() {
   const filteredOrders = orders.filter((item) => {
 
   const status = item.Status?.toLowerCase().trim();
+    if (
+  activeTab === "New Order" &&
+  (
+    status === "new order" ||
+    status === "neworder"
+  )
+) {
+  return true;
+}
 
   if (
     activeTab === "In Kitchen" &&

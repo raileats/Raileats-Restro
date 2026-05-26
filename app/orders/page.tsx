@@ -55,45 +55,80 @@ const audioRef = useRef<HTMLAudioElement | null>(null);
 
 useEffect(() => {
 
-  audioRef.current = new Audio("/sounds/new-order.mp3");
+  const audio = new Audio(
+    "/sounds/new-order.mp3"
+  );
 
-  audioRef.current.preload = "auto";
+  audio.preload = "auto";
 
-  document.body.addEventListener(
+  audio.volume = 1;
+
+  audioRef.current = audio;
+
+  const unlockAudio = async () => {
+
+    try {
+
+      if (!audioRef.current) return;
+
+      audioRef.current.muted = true;
+
+      await audioRef.current.play();
+
+      audioRef.current.pause();
+
+      audioRef.current.currentTime = 0;
+
+      audioRef.current.muted = false;
+
+      console.log(
+        "RESTRO AUDIO READY"
+      );
+
+    } catch (e) {
+
+      console.log(
+        "RESTRO AUDIO BLOCKED",
+        e
+      );
+
+    }
+
+  };
+
+  document.addEventListener(
     "click",
-    async () => {
-
-      try {
-
-        if (audioRef.current) {
-
-          audioRef.current.muted = true;
-
-          await audioRef.current.play();
-
-          audioRef.current.pause();
-
-          audioRef.current.currentTime = 0;
-
-          audioRef.current.muted = false;
-
-        }
-
-      } catch (e) {}
-
-    },
+    unlockAudio,
     { once: true }
   );
 
-  if (Notification.permission !== "granted") {
+  document.addEventListener(
+    "touchstart",
+    unlockAudio,
+    { once: true }
+  );
+
+  document.addEventListener(
+    "scroll",
+    unlockAudio,
+    { once: true }
+  );
+
+  if (
+    Notification.permission !==
+    "granted"
+  ) {
 
     Notification.requestPermission();
 
   }
 
-}, []);
-  useEffect(() => {
-  loadData();
+  return () => {
+
+    audio.pause();
+
+  };
+
 }, []);
 
 /* ================= REALTIME NEW ORDER ================= */

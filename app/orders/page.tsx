@@ -192,15 +192,52 @@ useEffect(() => {
 
         try {
 
-          if (audioRef.current) {
+  if (audioRef.current) {
 
-            audioRef.current.currentTime = 0;
+    console.log(
+      "PLAYING RESTRO SOUND"
+    );
 
-            await audioRef.current.play();
+    audioRef.current.pause();
 
-          }
+    audioRef.current.currentTime = 0;
 
-        } catch (e) {}
+    audioRef.current.volume = 1;
+
+    const playPromise =
+      audioRef.current.play();
+
+    if (playPromise) {
+
+      playPromise
+        .then(() => {
+
+          console.log(
+            "RESTRO SOUND SUCCESS"
+          );
+
+        })
+        .catch((err) => {
+
+          console.log(
+            "RESTRO SOUND FAILED",
+            err
+          );
+
+        });
+
+    }
+
+  }
+
+} catch (e) {
+
+  console.log(
+    "RESTRO AUDIO ERROR",
+    e
+  );
+
+}
 
         try {
 

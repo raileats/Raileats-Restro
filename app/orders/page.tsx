@@ -34,7 +34,7 @@ export default function OrdersPage() {
   // Status Modals Configuration Engine State
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [actionType, setActionType] = useState<"cancel" | "notdelivered" | "baddelivery" | null>(null);
+  const [actionType, setActionType] = useState<"cancel" | "notdelivered" | "baddelivery" | "inkitchen" | "outfordelivery" | "delivered" | null>(null);
   const [subStatus, setSubStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -131,6 +131,8 @@ export default function OrdersPage() {
             .trim();
 
           if (status !== "new order") {
+            // Agar chalte web app par status change ho, toh view refresh ho jaye
+            loadData();
             return;
           }
 
@@ -221,11 +223,49 @@ export default function OrdersPage() {
     }
   }
 
+  // Handle direct database updates for status transition
+  async function handleUpdateStatus(order: any, targetStatus: string, finalSubStatus = "", finalRemarks = "") {
+    try {
+      setSubmittingAction(true);
+      const { error } = await supabase
+        .from("Orders")
+        .update({
+          Status: targetStatus,
+          SubStatus: finalSubStatus || null,
+          Remarks: finalRemarks || null
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      // Close modals and trigger local reload
+      setActionModalOpen(false);
+      setSelectedOrder(null);
+      setActionType(null);
+      setSubStatus("");
+      setRemarks("");
+      loadData();
+    } catch (err) {
+      alert("Failed to update order status. Please try again.");
+      console.error(err);
+    } finally {
+      setSubmittingAction(false);
+    }
+  }
+
+  const handleOpenActionModal = (order: any, type: typeof actionType) => {
+    setSelectedOrder(order);
+    setActionType(type);
+    if (type === "cancel") setSubStatus(CANCEL_REASONS[0]);
+    if (type === "notdelivered") setSubStatus(NOT_DELIVERED_REASONS[0]);
+    setActionModalOpen(true);
+  };
+
   const handleNextTabs = () => {
     if ((tabSet * 2) + 2 < allTabs.length) {
       setTabSet(tabSet + 1);
     } else {
-      setTabSet(0); // वापस पहले सेट पर आ जाएँ
+      setTabSet(0); 
     }
   };
 
@@ -233,7 +273,7 @@ export default function OrdersPage() {
     if (tabSet > 0) {
       setTabSet(tabSet - 1);
     } else {
-      setTabSet(Math.floor((allTabs.length - 1) / 2)); // आखरी सेट पर जाएँ
+      setTabSet(Math.floor((allTabs.length - 1) / 2)); 
     }
   };
 
@@ -390,7 +430,9 @@ export default function OrdersPage() {
                 <span className="bg-blue-50 text-[#2f54eb] font-extrabold text-[10px] px-2.5 py-1 rounded-lg tracking-wide">
                   #{item.OrderId || "RE-960"}
                 </span>
-                <span className="bg-orange-50 text-orange-600 font-extrabold text-[10px] px-2.5 py-1 rounded-lg">
+                <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-lg ${
+                  item.Status === 'New Order' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                }`}>
                   {item.Status || "Out for Delivery"}
                 </span>
               </div>
@@ -450,18 +492,94 @@ export default function OrdersPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-0.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 min-w-0">
-                  <span className="text-sm">🏪</span>
-                  <span className="truncate max-w-[140px]">{item.RestroName}</span>
+              {/* DYNAMIC ORDER PROCESS MARKING CTAs FOR RESTRO */}
+              <div className="border-t border-gray-100 pt-3 mt-1 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  
+                  {/* Left-side Category Info */}
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 truncate min-w-0">
+                    <span className="text-sm">🏪</span>
+                    <span className="truncate max-w-[100px]">{item.RestroName}</span>
+                  </div>
+
+                  {/* Contextual Quick Actions Mapping */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    
+                    {/* CASE 1: NEW ORDER TAB -> ACCEPT / CANCEL BUTTONS */}
+                    {activeTab === "New Order" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "In Kitchen")}
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "cancel")}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {/* CASE 2: IN KITCHEN TAB -> DISPATCH AS OUT FOR DELIVERY */}
+                    {activeTab === "In Kitchen" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "Out for Delivery")}
+                          className="bg-[#2f54eb] hover:bg-blue-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Dispatch 🛵
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "cancel")}
+                          className="text-gray-400 font-bold text-[11px] px-2 py-1.5"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+
+                    {/* CASE 3: OUT FOR DELIVERY TAB -> DELIVERED / NOT DELIVERED MARKING */}
+                    {activeTab === "Out for Delivery" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "Delivered")}
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-2.5 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Delivered ✅
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "notdelivered")}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Missed ⚠️
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "baddelivery")}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2 py-1.5 rounded-xl transition"
+                        >
+                          Bad Delivery 🚨
+                        </button>
+                      </>
+                    )}
+
+                    {/* View Details Default Button */}
+                    <button 
+                      onClick={() => { setDetailedOrder(item); setDetailsModalOpen(true); }}
+                      className="bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-gray-700 transition"
+                    >
+                      Details
+                    </button>
+
+                  </div>
                 </div>
-                <button className="bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-[11px] font-black text-[#2f54eb] flex items-center gap-0.5 transition flex-shrink-0">
-                  View Details
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
               </div>
+
             </div>
           ))
         )}
@@ -498,6 +616,105 @@ export default function OrdersPage() {
           <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
         </button>
       </nav>
+
+      {/* DYNAMIC ACTION SUB-STATUS SELECTION MODAL ENGINE */}
+      {actionModalOpen && selectedOrder && (
+        <div className="absolute inset-0 bg-black/60 z-50 flex items-end justify-center animate-fadeIn">
+          <div className="bg-white w-full rounded-t-[32px] p-6 max-w-md shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-gray-900 capitalize">
+                Mark Order As: {actionType === "cancel" ? "Cancelled" : actionType === "notdelivered" ? "Not Delivered" : "Bad Delivery"}
+              </h3>
+              <button 
+                onClick={() => setActionModalOpen(false)}
+                className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-black text-gray-500"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100/40">
+              <p className="text-xs font-bold text-gray-800">Order Reference: #{selectedOrder.OrderId}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">{selectedOrder.CustomerName} • {selectedOrder.TrainNumber}</p>
+            </div>
+
+            {/* Sub-status Selection mapping logic */}
+            {(actionType === "cancel" || actionType === "notdelivered") && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Select Primary Reason</label>
+                <select 
+                  value={subStatus}
+                  onChange={(e) => setSubStatus(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#2f54eb]"
+                >
+                  {actionType === "cancel" 
+                    ? CANCEL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)
+                    : NOT_DELIVERED_REASONS.map((r) => <option key={r} value={r}>{r}</option>)
+                  }
+                </select>
+              </div>
+            )}
+
+            {/* Custom Description Textarea */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Internal Remarks / Comments</label>
+              <textarea 
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Type details for admin review..."
+                rows={3}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#2f54eb] resize-none"
+              />
+            </div>
+
+            {/* Trigger Button Execution */}
+            <button
+              disabled={submittingAction}
+              onClick={() => {
+                let statusString = "Cancelled";
+                if (actionType === "notdelivered") statusString = "Not Delivered";
+                if (actionType === "baddelivery") statusString = "Bad Delivery";
+                handleUpdateStatus(selectedOrder, statusString, subStatus, remarks);
+              }}
+              className="w-full bg-gray-900 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition mt-2 disabled:bg-gray-400"
+            >
+              {submittingAction ? "Processing Update..." : "Confirm Status Change"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* EXPANDABLE DRILLDOWN DRAWER MODAL */}
+      {detailsModalOpen && detailedOrder && (
+        <div className="absolute inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <div className="bg-white w-full rounded-t-[32px] p-5 max-w-md shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-gray-900">Order Parameters</h3>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">ID: #{detailedOrder.OrderId}</p>
+              </div>
+              <button 
+                onClick={() => { setDetailedOrder(null); setDetailsModalOpen(false); }}
+                className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Core Snapshot Details Block */}
+            <div className="space-y-2.5 text-xs font-semibold text-gray-700">
+              <div className="flex justify-between"><span className="text-gray-400">Status:</span><span className="font-bold text-blue-600">{detailedOrder.Status}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Customer:</span><span>{detailedOrder.CustomerName}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Mobile:</span><span>{detailedOrder.CustomerMobile || "N/A"}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Train / Coach / Seat:</span><span>{detailedOrder.TrainNumber} / {detailedOrder.Coach} / {detailedOrder.Seat}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Delivery Schedule:</span><span>{detailedOrder.DeliveryDate} ({detailedOrder.DeliveryTime})</span></div>
+              {detailedOrder.SubStatus && <div className="flex justify-between"><span className="text-gray-400">Reason Tag:</span><span className="text-red-500 font-bold">{detailedOrder.SubStatus}</span></div>}
+              {detailedOrder.Remarks && <div className="flex flex-col gap-1 pt-1"><span className="text-gray-400">Remarks:</span><p className="bg-gray-50 p-2 rounded-xl text-[11px] text-gray-600 border border-gray-100 font-medium">{detailedOrder.Remarks}</p></div>}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

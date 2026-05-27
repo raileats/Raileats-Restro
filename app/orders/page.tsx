@@ -13,21 +13,6 @@ const CANCEL_REASONS = [
   "Restro Closed",
   "Item Issue",
   "Restro Refused without Reason",
-  "Other""use client";
-
-import { useEffect, useRef, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const CANCEL_REASONS = [
-  "Restro Closed",
-  "Item Issue",
-  "Restro Refused without Reason",
   "Other"
 ];
 
@@ -39,7 +24,6 @@ const NOT_DELIVERED_REASONS = [
 
 export default function OrdersPage() {
   const router = useRouter();
-
   const [restro, setRestro] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("New Order");

@@ -29,7 +29,6 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("New Order");
   const [loading, setLoading] = useState(true);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   // Status Modals Configuration Engine State
   const [actionModalOpen, setActionModalOpen] = useState(false);
@@ -205,7 +204,7 @@ export default function OrdersPage() {
       const restroData = JSON.parse(stored);
       setRestro(restroData);
 
-      // FETCH ORDERS
+      // FETCH ORDERS (Filtering based on RestroCode from Supabase)
       const { data, error } = await supabase
         .from("Orders")
         .select("*")
@@ -223,22 +222,25 @@ export default function OrdersPage() {
     }
   }
 
-  // Handle direct database updates for status transition
+  // Handle updates mapped to the Schema (Matching primary key string 'OrderId')
   async function handleUpdateStatus(order: any, targetStatus: string, finalSubStatus = "", finalRemarks = "") {
     try {
       setSubmittingAction(true);
+      
+      // Database Schema matching object payload
       const { error } = await supabase
         .from("Orders")
         .update({
           Status: targetStatus,
           SubStatus: finalSubStatus || null,
-          Remarks: finalRemarks || null
+          // Remarks field orders table me nahi hai, triggers automatically OrderStatusHistory table handle kar lenge
+          UpdatedAt: new Date().toISOString()
         })
-        .eq("id", order.id);
+        .eq("OrderId", order.OrderId); // Filter mapped with OrderId string primary key
 
       if (error) throw error;
 
-      // Close modals and trigger local reload
+      // Close modals and trigger local view reload
       setActionModalOpen(false);
       setSelectedOrder(null);
       setActionType(null);
@@ -327,7 +329,7 @@ export default function OrdersPage() {
               RailEats
             </h1>
             <p className="text-xs text-gray-500 font-semibold truncate max-w-[160px]">
-              {restro?.RestroName || "Mizaz E Bhopal"}
+              {restro?.RestroName || "Loading..."}
             </p>
           </div>
         </div>
@@ -361,7 +363,7 @@ export default function OrdersPage() {
         <div className="px-4 mb-3">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Orders</h2>
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
-            Station : <span className="text-[#2f54eb] font-extrabold">{restro?.StationCode || "BPL"}</span>
+            Station : <span className="text-[#2f54eb] font-extrabold">{restro?.StationCode || "N/A"}</span>
           </p>
         </div>
 
@@ -428,12 +430,12 @@ export default function OrdersPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="bg-blue-50 text-[#2f54eb] font-extrabold text-[10px] px-2.5 py-1 rounded-lg tracking-wide">
-                  #{item.OrderId || "RE-960"}
+                  #{item.OrderId}
                 </span>
                 <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-lg ${
                   item.Status === 'New Order' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
                 }`}>
-                  {item.Status || "Out for Delivery"}
+                  {item.Status}
                 </span>
               </div>
 
@@ -505,7 +507,7 @@ export default function OrdersPage() {
                   {/* Contextual Quick Actions Mapping */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     
-                    {/* CASE 1: NEW ORDER TAB -> ACCEPT / CANCEL BUTTONS */}
+                    {/* CASE 1: NEW ORDER TAB -> ACCEPT / REJECT BUTTONS */}
                     {activeTab === "New Order" && (
                       <>
                         <button 
@@ -543,13 +545,13 @@ export default function OrdersPage() {
                       </>
                     )}
 
-                    {/* CASE 3: OUT FOR DELIVERY TAB -> DELIVERED / NOT DELIVERED MARKING */}
+                    {/* CASE 3: OUT FOR DELIVERY TAB -> DELIVERED / MISSED / BAD DELIVERY */}
                     {activeTab === "Out for Delivery" && (
                       <>
                         <button 
                           disabled={submittingAction}
                           onClick={() => handleUpdateStatus(item, "Delivered")}
-                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-2.5 py-1.5 rounded-xl shadow-sm transition"
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[12px] px-3 py-1.5 rounded-xl shadow-sm transition"
                         >
                           Delivered ✅
                         </button>
@@ -561,7 +563,7 @@ export default function OrdersPage() {
                         </button>
                         <button 
                           onClick={() => handleOpenActionModal(item, "baddelivery")}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2 py-1.5 rounded-xl transition"
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
                         >
                           Bad Delivery 🚨
                         </button>
@@ -709,8 +711,8 @@ export default function OrdersPage() {
               <div className="flex justify-between"><span className="text-gray-400">Mobile:</span><span>{detailedOrder.CustomerMobile || "N/A"}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Train / Coach / Seat:</span><span>{detailedOrder.TrainNumber} / {detailedOrder.Coach} / {detailedOrder.Seat}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Delivery Schedule:</span><span>{detailedOrder.DeliveryDate} ({detailedOrder.DeliveryTime})</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Total Amount:</span><span className="font-bold text-gray-900">₹{detailedOrder.TotalAmount}</span></div>
               {detailedOrder.SubStatus && <div className="flex justify-between"><span className="text-gray-400">Reason Tag:</span><span className="text-red-500 font-bold">{detailedOrder.SubStatus}</span></div>}
-              {detailedOrder.Remarks && <div className="flex flex-col gap-1 pt-1"><span className="text-gray-400">Remarks:</span><p className="bg-gray-50 p-2 rounded-xl text-[11px] text-gray-600 border border-gray-100 font-medium">{detailedOrder.Remarks}</p></div>}
             </div>
           </div>
         </div>

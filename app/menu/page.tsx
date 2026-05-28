@@ -52,16 +52,18 @@ export default function MenuPage() {
 
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
-      
+
       {/* 1. FIXED TOP APP HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
-            <img 
-              src="/logo.png" 
-              alt="logo" 
-              className="w-full h-full object-cover" 
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            <img
+              src="/logo.png"
+              alt="logo"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
             RE
           </div>
@@ -76,7 +78,7 @@ export default function MenuPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="bg-[#2f54eb] text-white text-xs font-black px-2.5 py-1.5 rounded-lg min-w-[54px] text-center shadow-md shadow-blue-100">
             Code {restro?.RestroCode}
@@ -105,14 +107,11 @@ export default function MenuPage() {
       <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
 
         {loading ? (
-
           <div className="h-full flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2">
             <span className="text-2xl animate-spin">⏳</span>
             Fetching Restaurant Menu...
           </div>
-
         ) : menuItems.length === 0 ? (
-
           <div className="h-full flex flex-col items-center justify-center py-12 text-center">
             <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col items-center w-full">
               <span className="text-5xl mb-3">🍽️</span>
@@ -126,20 +125,15 @@ export default function MenuPage() {
               </p>
             </div>
           </div>
-
         ) : (
-
           menuItems.map((item, index) => {
-
             const isVeg =
               item.item_category?.toLowerCase() === "veg" ||
               item.item_category?.toLowerCase() === "jain";
 
-            const isOn =
-              item.status?.toUpperCase() === "ON";
+            const isOn = item.status?.toUpperCase() === "ON";
 
             return (
-
               <div
                 key={index}
                 className="bg-white rounded-3xl border border-gray-100/80 p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden"
@@ -149,7 +143,6 @@ export default function MenuPage() {
                 <div className="flex items-center justify-between">
 
                   <div className="flex items-center gap-2">
-
                     <span
                       className={`w-4 h-4 rounded border flex items-center justify-center text-[8px] font-bold ${
                         isVeg
@@ -161,9 +154,9 @@ export default function MenuPage() {
                     </span>
 
                     <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
-                      {item.item_cuisine || "Cuisine"} • {item.item_category}
+                      {item.item_cuisine || "Cuisine"} •{" "}
+                      {item.item_category}
                     </span>
-
                   </div>
 
                   <span
@@ -175,14 +168,12 @@ export default function MenuPage() {
                   >
                     {isOn ? "● ACTIVE (ON)" : "○ DISABLED (OFF)"}
                   </span>
-
                 </div>
 
                 {/* Core Item Metadata */}
                 <div className="min-w-0">
 
                   <div className="flex items-start justify-between gap-2">
-
                     <h4 className="font-black text-base text-gray-900 leading-tight">
                       {item.item_name}
                     </h4>
@@ -190,7 +181,6 @@ export default function MenuPage() {
                     <span className="bg-gray-50 text-gray-500 font-extrabold text-[9px] px-2 py-0.5 rounded-md flex-shrink-0">
                       Code: {item.item_code}
                     </span>
-
                   </div>
 
                   {item.item_description && (
@@ -198,7 +188,6 @@ export default function MenuPage() {
                       {item.item_description}
                     </p>
                   )}
-
                 </div>
 
                 {/* Logistics & Timings Grid */}
@@ -208,7 +197,8 @@ export default function MenuPage() {
                     <span>🕒 Avail:</span>
 
                     <span className="text-gray-700 font-extrabold truncate">
-                      {item.start_time?.slice(0, 5)} - {item.end_time?.slice(0, 5)}
+                      {item.start_time?.slice(0, 5)} -{" "}
+                      {item.end_time?.slice(0, 5)}
                     </span>
                   </div>
 
@@ -219,7 +209,6 @@ export default function MenuPage() {
                       {item.gst_percent || 0}%
                     </span>
                   </div>
-
                 </div>
 
                 {/* Price Distribution Segment */}
@@ -228,18 +217,11 @@ export default function MenuPage() {
                   <div className="flex flex-col gap-1">
 
                     <span className="text-[10px] text-gray-400 font-bold">
-                      Base: ₹{item.base_price || item.restro_price || 0}
+                      Base: ₹{item.base_price || 0}
                     </span>
 
                     <span className="text-[10px] text-orange-500 font-black">
-                      Vendor: ₹{
-                        item.vendor_price ||
-                        item.VendorPrice ||
-                        item.vendorPrice ||
-                        item.vendor_rate ||
-                        item.vendor_amount ||
-                        0
-                      }
+                      Restro: ₹{item.restro_price || 0}
                     </span>
 
                   </div>
@@ -259,15 +241,12 @@ export default function MenuPage() {
                 </div>
 
               </div>
-
             );
           })
-
         )}
-
       </main>
 
-      {/* 3. NEW FIXED BOTTOM NAVIGATION BAR WITH MENU TAB */}
+      {/* 3. FIXED BOTTOM NAVIGATION BAR */}
       <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
 
         <button

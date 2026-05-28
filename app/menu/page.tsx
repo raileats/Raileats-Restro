@@ -15,6 +15,7 @@ export default function MenuPage() {
   const [restro, setRestro] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadMenu();
@@ -32,7 +33,6 @@ export default function MenuPage() {
       const restroData = JSON.parse(stored);
       setRestro(restroData);
 
-      // RestroMenuItems se logged-in restaurant ke items fetch karna
       const { data, error } = await supabase
         .from("RestroMenuItems")
         .select("*")
@@ -50,12 +50,54 @@ export default function MenuPage() {
     }
   }
 
+  async function toggleItemStatus(item: any) {
+    try {
+      setUpdatingId(item.id);
+
+      const newStatus =
+        item.status?.toUpperCase() === "ON" ? "OFF" : "ON";
+
+      const { error } = await supabase
+        .from("RestroMenuItems")
+        .update({
+          status: newStatus,
+        })
+        .eq("id", item.id);
+
+      if (error) {
+        console.log(error);
+        alert("Failed to update item status");
+        return;
+      }
+
+      setMenuItems((prev) =>
+        prev.map((menuItem) =>
+          menuItem.id === item.id
+            ? { ...menuItem, status: newStatus }
+            : menuItem
+        )
+      );
+
+      alert(
+        `Item ${
+          newStatus === "ON" ? "Activated" : "Deactivated"
+        } Successfully`
+      );
+    } catch (err) {
+      console.log(err);
+      alert("Something went wrong");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
 
-      {/* 1. FIXED TOP APP HEADER */}
+      {/* HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
+
           <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
             <img
               src="/logo.png"
@@ -77,6 +119,7 @@ export default function MenuPage() {
               {restro?.RestroName || "Restaurant"}
             </p>
           </div>
+
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -86,8 +129,9 @@ export default function MenuPage() {
         </div>
       </header>
 
-      {/* FIXED PAGE TITLE SEGMENT */}
+      {/* TITLE */}
       <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full px-4 flex items-center justify-between">
+
         <div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">
             Food Menu
@@ -101,9 +145,10 @@ export default function MenuPage() {
         <div className="bg-blue-50 text-[#2f54eb] text-[11px] font-black px-3 py-1.5 rounded-xl">
           Total: {menuItems.length} Items
         </div>
+
       </div>
 
-      {/* 2. MIDDLE MENU LIST VIEW (SCROLLABLE) */}
+      {/* MENU LIST */}
       <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
 
         {loading ? (
@@ -113,7 +158,9 @@ export default function MenuPage() {
           </div>
         ) : menuItems.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+
             <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col items-center w-full">
+
               <span className="text-5xl mb-3">🍽️</span>
 
               <h3 className="text-base font-black text-gray-800">
@@ -123,7 +170,9 @@ export default function MenuPage() {
               <p className="text-xs text-gray-400 mt-1 font-medium max-w-[220px]">
                 Your menu list is empty for restro code {restro?.RestroCode}.
               </p>
+
             </div>
+
           </div>
         ) : (
           menuItems.map((item, index) => {
@@ -139,10 +188,11 @@ export default function MenuPage() {
                 className="bg-white rounded-3xl border border-gray-100/80 p-4 shadow-sm flex flex-col gap-3 relative overflow-hidden"
               >
 
-                {/* Veg/Non-Veg Badge & Status Indicator */}
+                {/* TOP */}
                 <div className="flex items-center justify-between">
 
                   <div className="flex items-center gap-2">
+
                     <span
                       className={`w-4 h-4 rounded border flex items-center justify-center text-[8px] font-bold ${
                         isVeg
@@ -157,23 +207,26 @@ export default function MenuPage() {
                       {item.item_cuisine || "Cuisine"} •{" "}
                       {item.item_category}
                     </span>
+
                   </div>
 
                   <span
                     className={`font-black text-[9px] px-2 py-0.5 rounded-md ${
                       isOn
                         ? "bg-green-50 text-green-600 border border-green-100"
-                        : "bg-gray-100 text-gray-500"
+                        : "bg-red-50 text-red-600 border border-red-100"
                     }`}
                   >
-                    {isOn ? "● ACTIVE (ON)" : "○ DISABLED (OFF)"}
+                    {isOn ? "● ACTIVE (ON)" : "● DEACTIVE (OFF)"}
                   </span>
+
                 </div>
 
-                {/* Core Item Metadata */}
+                {/* ITEM DETAILS */}
                 <div className="min-w-0">
 
                   <div className="flex items-start justify-between gap-2">
+
                     <h4 className="font-black text-base text-gray-900 leading-tight">
                       {item.item_name}
                     </h4>
@@ -181,6 +234,7 @@ export default function MenuPage() {
                     <span className="bg-gray-50 text-gray-500 font-extrabold text-[9px] px-2 py-0.5 rounded-md flex-shrink-0">
                       Code: {item.item_code}
                     </span>
+
                   </div>
 
                   {item.item_description && (
@@ -188,30 +242,36 @@ export default function MenuPage() {
                       {item.item_description}
                     </p>
                   )}
+
                 </div>
 
-                {/* Logistics & Timings Grid */}
+                {/* TIME + GST */}
                 <div className="grid grid-cols-2 gap-2 bg-gray-50/50 p-2.5 rounded-2xl border border-gray-100 text-[11px] font-bold text-gray-500">
 
                   <div className="flex items-center gap-1.5">
+
                     <span>🕒 Avail:</span>
 
                     <span className="text-gray-700 font-extrabold truncate">
                       {item.start_time?.slice(0, 5)} -{" "}
                       {item.end_time?.slice(0, 5)}
                     </span>
+
                   </div>
 
                   <div className="flex items-center gap-1.5 justify-end">
+
                     <span>Tax (GST):</span>
 
                     <span className="text-gray-700 font-extrabold">
                       {item.gst_percent || 0}%
                     </span>
+
                   </div>
+
                 </div>
 
-                {/* Price Distribution Segment */}
+                {/* PRICE */}
                 <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 mt-0.5">
 
                   <div className="flex flex-col gap-1">
@@ -240,13 +300,31 @@ export default function MenuPage() {
 
                 </div>
 
+                {/* ACTIVE / DEACTIVE BUTTON */}
+                <button
+                  onClick={() => toggleItemStatus(item)}
+                  disabled={updatingId === item.id}
+                  className={`w-full h-10 rounded-xl text-xs font-black transition-all ${
+                    isOn
+                      ? "bg-red-50 text-red-600 border border-red-100"
+                      : "bg-green-50 text-green-600 border border-green-100"
+                  }`}
+                >
+                  {updatingId === item.id
+                    ? "UPDATING..."
+                    : isOn
+                    ? "DEACTIVATE ITEM"
+                    : "ACTIVATE ITEM"}
+                </button>
+
               </div>
             );
           })
         )}
+
       </main>
 
-      {/* 3. FIXED BOTTOM NAVIGATION BAR */}
+      {/* BOTTOM NAV */}
       <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] pb-safe">
 
         <button

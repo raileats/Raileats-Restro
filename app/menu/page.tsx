@@ -210,15 +210,15 @@ export default function MenuPage() {
 
                   </div>
 
-                  {/* BLUE / GRAY STATUS BUTTON */}
+                  {/* STATUS BADGE */}
                   <span
                     className={`font-black text-[9px] px-2 py-0.5 rounded-md ${
                       isOn
-                        ? "bg-blue-50 text-blue-600 border border-blue-100"
-                        : "bg-gray-100 text-gray-500 border border-gray-200"
+                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                        : "bg-gray-200 text-gray-600 border border-gray-300"
                     }`}
                   >
-                    {isOn ? "● ACTIVE (ON)" : "● DEACTIVE (OFF)"}
+                    {isOn ? "• ACTIVE (ON)" : "• DEACTIVE (OFF)"}
                   </span>
 
                 </div>

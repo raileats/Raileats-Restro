@@ -68,14 +68,18 @@ export default function ProfilePage() {
       {/* 1. FIXED TOP APP HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#f4b400] rounded-xl flex items-center justify-center font-bold text-black text-xs overflow-hidden shadow-sm flex-shrink-0">
+          <div className="w-11 h-11 rounded-full bg-white border border-yellow-200 flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
             <img 
               src="/logo.png" 
-              alt="logo" 
-              className="w-full h-full object-cover" 
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              alt="RailEats" 
+              className="w-full h-full object-contain rounded-full p-1" 
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                if (fallback) fallback.style.display = "flex";
+              }}
             />
-            RE
+            <span className="hidden w-full h-full items-center justify-center rounded-full bg-[#f4b400] text-[11px] font-black text-black">RE</span>
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-black tracking-tight text-gray-900 leading-none mb-0.5">RailEats</h1>

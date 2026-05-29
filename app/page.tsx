@@ -52,14 +52,18 @@ export default function Home() {
       
       {/* BRAND HEADER */}
       <header className="bg-white px-5 py-4 flex items-center gap-3 border-b border-gray-100 flex-shrink-0">
-        <div className="w-9 h-9 bg-[#f4b400] rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+        <div className="w-10 h-10 rounded-full bg-white border border-yellow-200 flex items-center justify-center shadow-sm overflow-hidden flex-shrink-0">
           <img 
             src="/logo.png" 
             alt="RailEats" 
-            className="w-full h-full object-cover" 
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            className="w-full h-full object-contain rounded-full p-1" 
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "flex";
+            }}
           />
-          <span className="font-black text-xs text-black">RE</span>
+          <span className="hidden w-full h-full items-center justify-center rounded-full bg-[#f4b400] text-[11px] font-black text-black">RE</span>
         </div>
         <div>
           <h1 className="text-base font-black tracking-tight text-gray-950 leading-none mb-0.5">RailEats</h1>

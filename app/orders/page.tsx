@@ -302,6 +302,14 @@ export default function OrdersPage() {
   async function handleUpdateStatus(order: any, targetStatus: string, finalSubStatus = "", finalRemarks = "") {
     try {
       setSubmittingAction(true);
+      const changedAt = new Date().toISOString();
+      const oldStatus = order?.Status ?? order?.OrderStatus ?? order?.CurrentStatus ?? null;
+      const restroName =
+        restro?.RestroName ||
+        order?.RestroName ||
+        order?.OutletName ||
+        "Restro";
+      const cleanRemarks = String(finalRemarks || "").trim();
       
       // Database Schema matching object payload
       const { error } = await supabase
@@ -309,12 +317,31 @@ export default function OrdersPage() {
         .update({
           Status: targetStatus,
           SubStatus: finalSubStatus || null,
-          // Remarks field orders table me nahi hai, triggers automatically OrderStatusHistory table handle kar lenge
-          UpdatedAt: new Date().toISOString()
+          UpdatedAt: changedAt
         })
         .eq("OrderId", order.OrderId); // Filter mapped with OrderId string primary key
 
       if (error) throw error;
+
+      const { error: historyError } = await supabase
+        .from("OrderStatusHistory")
+        .insert({
+          OrderId: order.OrderId,
+          OldStatus: oldStatus,
+          NewStatus: targetStatus,
+          SubStatus: finalSubStatus || null,
+          Remarks: cleanRemarks || null,
+          Note: cleanRemarks || null,
+          ChangedBy: restroName,
+          UserType: "Restro",
+          UserName: restroName,
+          ActionSource: "Restro",
+          ChangedAt: changedAt,
+        });
+
+      if (historyError) {
+        console.error("Order history insert failed:", historyError);
+      }
 
       // Close modals and trigger local view reload
       setActionModalOpen(false);

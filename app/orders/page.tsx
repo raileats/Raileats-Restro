@@ -22,6 +22,80 @@ const NOT_DELIVERED_REASONS = [
   "Technical Issue"
 ];
 
+function readStoredRestro() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const stored = window.localStorage.getItem("restro");
+    return stored ? JSON.parse(stored) : null;
+  } catch (error) {
+    console.log("RESTRO STORAGE READ FAILED", error);
+    return null;
+  }
+}
+
+function readStoredNewOrderCount() {
+  if (typeof window === "undefined") return 0;
+
+  try {
+    return Number(window.localStorage.getItem("restro_new_orders") || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function writeStoredNewOrderCount(value: number) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem("restro_new_orders", String(value));
+  } catch (error) {
+    console.log("RESTRO NEW ORDER COUNT SAVE FAILED", error);
+  }
+}
+
+function clearStoredNewOrderCount() {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem("restro_new_orders");
+  } catch (error) {
+    console.log("RESTRO NEW ORDER COUNT CLEAR FAILED", error);
+  }
+}
+
+function hasNotificationApi() {
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    typeof window.Notification !== "undefined"
+  );
+}
+
+async function requestNotificationPermissionSafely() {
+  if (!hasNotificationApi()) return;
+
+  try {
+    if (window.Notification.permission === "default") {
+      await window.Notification.requestPermission();
+    }
+  } catch (error) {
+    console.log("RESTRO NOTIFICATION PERMISSION SKIPPED", error);
+  }
+}
+
+function showOrderNotification(title: string, body: string) {
+  if (!hasNotificationApi()) return;
+
+  try {
+    if (window.Notification.permission === "granted") {
+      new window.Notification(title, { body });
+    }
+  } catch (error) {
+    console.log("RESTRO NOTIFICATION FAILED", error);
+  }
+}
+
 export default function OrdersPage() {
   const router = useRouter();
 
@@ -29,6 +103,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("New Order");
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState("");
 
   // Status Modals Configuration Engine State
   const [actionModalOpen, setActionModalOpen] = useState(false);
@@ -42,12 +117,7 @@ export default function OrdersPage() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailedOrder, setDetailedOrder] = useState<any>(null);
 
-  const [newOrderCount, setNewOrderCount] = useState<number>(() => {
-    if (typeof window !== "undefined") {
-      return Number(localStorage.getItem("restro_new_orders") || 0);
-    }
-    return 0;
-  });
+  const [newOrderCount, setNewOrderCount] = useState<number>(readStoredNewOrderCount);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
@@ -73,7 +143,9 @@ export default function OrdersPage() {
 
   /* ================= INIT SOUND ================= */
   useEffect(() => {
-    const audio = new Audio("/sounds/new-order.mp3");
+    if (typeof window === "undefined") return;
+
+    const audio = new window.Audio("/sounds/new-order.mp3");
     audio.preload = "auto";
     audio.volume = 1;
     audioRef.current = audio;
@@ -96,11 +168,12 @@ export default function OrdersPage() {
     document.addEventListener("touchstart", unlockAudio, { once: true });
     document.addEventListener("scroll", unlockAudio, { once: true });
 
-    if (Notification.permission !== "granted") {
-      Notification.requestPermission();
-    }
+    requestNotificationPermissionSafely();
 
     return () => {
+      document.removeEventListener("click", unlockAudio);
+      document.removeEventListener("touchstart", unlockAudio);
+      document.removeEventListener("scroll", unlockAudio);
       audio.pause();
     };
   }, []);
@@ -139,7 +212,7 @@ export default function OrdersPage() {
 
           setNewOrderCount((prev) => {
             const updated = prev + 1;
-            localStorage.setItem("restro_new_orders", String(updated));
+            writeStoredNewOrderCount(updated);
             return updated;
           });
 
@@ -165,13 +238,10 @@ export default function OrdersPage() {
             console.log("RESTRO AUDIO ERROR", e);
           }
 
-          try {
-            if (Notification.permission === "granted") {
-              new Notification("🚆 New RailEats Order", {
-                body: `${newData.CustomerName || "Customer"} • ${newData.StationName || ""}`,
-              });
-            }
-          } catch (e) {}
+          showOrderNotification(
+            "New RailEats Order",
+            `${newData.CustomerName || "Customer"} - ${newData.StationName || ""}`
+          );
 
           loadData();
         }
@@ -194,14 +264,15 @@ export default function OrdersPage() {
 
   async function loadData() {
     try {
-      const stored = localStorage.getItem("restro");
+      setPageError("");
 
-      if (!stored) {
+      const restroData = readStoredRestro();
+
+      if (!restroData) {
         router.push("/");
         return;
       }
 
-      const restroData = JSON.parse(stored);
       setRestro(restroData);
 
       // FETCH ORDERS (Filtering based on RestroCode from Supabase)
@@ -211,13 +282,14 @@ export default function OrdersPage() {
         .eq("RestroCode", restroData.RestroCode)
         .order("CreatedAt", { ascending: false });
 
-      if (!error && data) {
-        setOrders(data);
-      }
+      if (error) throw error;
+
+      setOrders(data || []);
 
       setLoading(false);
     } catch (err) {
       console.log(err);
+      setPageError("Orders load nahi ho paaye. Internet check karke Retry karein.");
       setLoading(false);
     }
   }
@@ -309,7 +381,7 @@ export default function OrdersPage() {
   });
 
   return (
-    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none touch-action-none">
+    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none overscroll-contain">
       
       {/* 1. FIXED TOP APP HEADER */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 flex-shrink-0 z-50">
@@ -342,7 +414,7 @@ export default function OrdersPage() {
           <button
             onClick={() => {
               setNewOrderCount(0);
-              localStorage.removeItem("restro_new_orders");
+              clearStoredNewOrderCount();
               setActiveTab("New Order");
             }}
             className="relative w-9 h-9 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-base"
@@ -407,7 +479,23 @@ export default function OrdersPage() {
 
       {/* 2. SCROLLABLE MIDDLE MAIN CONTENT VIEW */}
       <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
-        {loading ? (
+        {pageError ? (
+          <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-white rounded-3xl border border-red-100 p-6 shadow-sm flex flex-col items-center w-full">
+              <span className="text-4xl mb-3">⚠️</span>
+              <h3 className="text-base font-black text-gray-900">Orders nahi khul paaye</h3>
+              <p className="text-xs text-gray-500 mt-1 font-medium max-w-[240px]">
+                {pageError}
+              </p>
+              <button
+                onClick={loadData}
+                className="mt-4 bg-[#2f54eb] text-white text-xs font-black px-5 py-2.5 rounded-xl active:scale-[0.99]"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="h-full flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2">
             <span className="text-2xl animate-spin">⏳</span>
             Fetching Fresh Orders...
@@ -425,7 +513,7 @@ export default function OrdersPage() {
         ) : (
           filteredOrders.map((item, index) => (
             <div 
-              key={index} 
+              key={item.OrderId || index} 
               className="bg-white rounded-3xl border border-gray-100/80 p-4 shadow-sm flex flex-col gap-3.5 relative"
             >
               <div className="flex items-center justify-between">

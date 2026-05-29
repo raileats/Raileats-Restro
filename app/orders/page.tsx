@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -104,6 +104,8 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("New Order");
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Status Modals Configuration Engine State
   const [actionModalOpen, setActionModalOpen] = useState(false);
@@ -120,6 +122,8 @@ export default function OrdersPage() {
   const [newOrderCount, setNewOrderCount] = useState<number>(readStoredNewOrderCount);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   
   // टैब पेजिनेशन स्टेट (एक बार में सिर्फ 2 टैब दिखाने के लिए)
   const [tabSet, setTabSet] = useState(0);
@@ -351,6 +355,40 @@ export default function OrdersPage() {
     }
   };
 
+  const handlePullStart = (e: TouchEvent<HTMLElement>) => {
+    if (mainScrollRef.current?.scrollTop === 0) {
+      touchStartYRef.current = e.touches[0]?.clientY ?? null;
+    }
+  };
+
+  const handlePullMove = (e: TouchEvent<HTMLElement>) => {
+    if (touchStartYRef.current === null || isRefreshing) return;
+    if ((mainScrollRef.current?.scrollTop || 0) > 0) {
+      touchStartYRef.current = null;
+      setPullDistance(0);
+      return;
+    }
+
+    const currentY = e.touches[0]?.clientY ?? 0;
+    const distance = currentY - touchStartYRef.current;
+
+    if (distance > 0) {
+      setPullDistance(Math.min(distance, 96));
+    }
+  };
+
+  const handlePullEnd = async () => {
+    if (pullDistance >= 72 && !isRefreshing) {
+      setIsRefreshing(true);
+      setPullDistance(54);
+      await loadData();
+      setIsRefreshing(false);
+    }
+
+    touchStartYRef.current = null;
+    setPullDistance(0);
+  };
+
   const filteredOrders = orders.filter((item) => {
     const status = item.Status?.toLowerCase().trim();
     if (
@@ -478,7 +516,26 @@ export default function OrdersPage() {
       </div>
 
       {/* 2. SCROLLABLE MIDDLE MAIN CONTENT VIEW */}
-      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y">
+      <main
+        ref={mainScrollRef}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+        onTouchCancel={handlePullEnd}
+        className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y"
+      >
+        {(pullDistance > 0 || isRefreshing) && (
+          <div
+            className="flex items-center justify-center text-[11px] font-black text-[#2f54eb] transition-all"
+            style={{ height: `${Math.max(28, pullDistance)}px` }}
+          >
+            <span className={isRefreshing ? "animate-spin mr-2" : "mr-2"}>
+              ⟳
+            </span>
+            {isRefreshing ? "Refreshing orders..." : pullDistance >= 72 ? "Release to refresh" : "Pull to refresh"}
+          </div>
+        )}
+
         {pageError ? (
           <div className="h-full flex flex-col items-center justify-center py-12 text-center">
             <div className="bg-white rounded-3xl border border-red-100 p-6 shadow-sm flex flex-col items-center w-full">

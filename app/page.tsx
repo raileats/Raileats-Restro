@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 
 export default function Home() {
   const router = useRouter();
@@ -11,163 +10,219 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleLogin() {
-    if (!mobile || !password) {
-      alert("Please enter mobile and password");
+  useEffect(() => {
+    let active = true;
+
+    async function checkExistingSession() {
+      try {
+        const response = await fetch("/api/auth/restro-session", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const json = await response.json().catch(() => ({}));
+
+        if (!active) return;
+
+        if (response.ok && json?.ok && json?.authenticated && json?.restro) {
+          localStorage.setItem("restro", JSON.stringify(json.restro));
+          router.replace("/orders");
+          return;
+        }
+
+        localStorage.removeItem("restro");
+      } catch {
+        if (active) {
+          localStorage.removeItem("restro");
+        }
+      } finally {
+        if (active) {
+          setCheckingSession(false);
+        }
+      }
+    }
+
+    checkExistingSession();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  async function handleLogin(event?: FormEvent) {
+    event?.preventDefault();
+
+    if (loading) return;
+
+    const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+
+    if (cleanMobile.length !== 10 || !password.trim()) {
+      setError("Please enter valid mobile number and password");
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
+      const response = await fetch("/api/auth/restro-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mobile: cleanMobile,
+          password,
+        }),
+      });
 
-      const { data, error } = await supabase
-        .from("RestroMaster")
-        .select("*")
-        .eq("RestroLoginMobile", mobile)
-        .eq("RestroPassword", password)
-        .single();
+      const json = await response.json().catch(() => ({}));
 
-      if (error || !data) {
-        alert("Invalid Credentials");
-        setLoading(false);
-        return;
+      if (!response.ok || !json?.ok || !json?.restro) {
+        throw new Error(json?.error || "Invalid credentials");
       }
 
-      // SAVE LOGIN SESSION
-      localStorage.setItem("restro", JSON.stringify(data));
+      // Temporary compatibility for existing Orders/Menu/Profile pages.
+      // Only safe public restaurant fields are stored; password is never stored.
+      localStorage.setItem("restro", JSON.stringify(json.restro));
 
-      // REDIRECT TO ORDERS
-      router.push("/orders");
-    } catch (err) {
-      console.log(err);
-      alert("Login Failed");
+      router.replace("/orders");
+      router.refresh();
+    } catch (loginError: any) {
+      localStorage.removeItem("restro");
+      setError(loginError?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <div className="h-[100dvh] max-w-md mx-auto flex flex-col justify-between bg-white overflow-hidden relative shadow-2xl border-x border-gray-100">
-      
-      {/* BRAND HEADER */}
-      <header className="bg-white px-5 py-4 flex items-center gap-3 border-b border-gray-100 flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-white border border-yellow-200 flex items-center justify-center shadow-sm overflow-hidden flex-shrink-0">
-          <img 
-            src="/logo.png" 
-            alt="RailEats" 
-            className="w-full h-full object-contain rounded-full p-1" 
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-              if (fallback) fallback.style.display = "flex";
-            }}
-          />
-          <span className="hidden w-full h-full items-center justify-center rounded-full bg-[#f4b400] text-[11px] font-black text-black">RE</span>
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#f7f9fc]">
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-4 text-xs font-black text-gray-600 shadow-sm">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#2f54eb] border-t-transparent" />
+          Checking secure session...
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mx-auto flex h-[100dvh] max-w-md flex-col justify-between overflow-hidden border-x border-gray-100 bg-white shadow-2xl">
+      <header className="flex flex-shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-5 py-4">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-yellow-200 bg-white shadow-sm">
+          <img
+            src="/logo.png"
+            alt="RailEats"
+            className="h-full w-full rounded-full object-contain p-1"
+          />
+        </div>
+
         <div>
-          <h1 className="text-base font-black tracking-tight text-gray-950 leading-none mb-0.5">RailEats</h1>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Restro Panel</p>
+          <h1 className="mb-0.5 text-base font-black leading-none tracking-tight text-gray-950">
+            RailEats
+          </h1>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            Restro Panel
+          </p>
         </div>
       </header>
 
-      {/* LOGIN CONTAINER */}
-      <main className="p-5 flex-1 flex flex-col justify-center bg-[#f7f9fc] overflow-y-auto">
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm w-full">
-          
-          {/* HEADER SECTION */}
-          <div className="text-center mb-5">
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Restro Login</h2>
-            <p className="text-xs text-gray-400 mt-1 font-medium">
-              Enter your credentials to manage live train orders.
+      <main className="flex flex-1 flex-col justify-center overflow-y-auto bg-[#f7f9fc] p-5">
+        <form
+          onSubmit={handleLogin}
+          className="w-full rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"
+        >
+          <div className="mb-5 text-center">
+            <h2 className="text-2xl font-black tracking-tight text-gray-900">
+              Restro Login
+            </h2>
+            <p className="mt-1 text-xs font-medium text-gray-400">
+              Securely sign in to manage live train orders.
             </p>
           </div>
 
-          {/* MOBILE INPUT */}
+          {error ? (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700">
+              {error}
+            </div>
+          ) : null}
+
           <div className="mb-4">
-            <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">
+            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-gray-500">
               Mobile Number
             </label>
+
             <input
-              type="text"
+              type="tel"
               inputMode="numeric"
+              autoComplete="username"
               maxLength={10}
               value={mobile}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                setMobile(value);
+              onChange={(event) => {
+                setMobile(event.target.value.replace(/\D/g, "").slice(0, 10));
+                setError(null);
               }}
               placeholder="Enter registered mobile number"
-              className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-xs font-bold text-gray-800 outline-none transition-all focus:border-[#2f54eb] focus:bg-white"
             />
           </div>
 
-          {/* PASSWORD INPUT */}
           <div className="mb-5">
-            <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">
+            <label className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-gray-500">
               Password
             </label>
+
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError(null);
+                }}
                 placeholder="Enter account password"
-                className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 pr-12 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 pr-12 text-xs font-bold text-gray-800 outline-none transition-all focus:border-[#2f54eb] focus:bg-white"
               />
+
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-base grayscale opacity-60 hover:opacity-100 transition"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-base opacity-60 transition hover:opacity-100"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
 
-          {/* LOGIN CTA BUTTON */}
           <button
-            onClick={handleLogin}
+            type="submit"
             disabled={loading}
-            className="w-full h-11 bg-[#2f54eb] hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md shadow-blue-100 transition duration-150 disabled:opacity-60 flex items-center justify-center tracking-wide"
+            className="flex h-11 w-full items-center justify-center rounded-xl bg-[#2f54eb] text-xs font-black tracking-wide text-white shadow-md shadow-blue-100 transition duration-150 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 Verifying...
-              </div>
+              </span>
             ) : (
               "LOG IN TO PANEL"
             )}
           </button>
-        </div>
+
+          <p className="mt-4 text-center text-[10px] font-semibold text-gray-400">
+            Your password is verified securely on the server and is never saved
+            in browser storage.
+          </p>
+        </form>
       </main>
 
-      {/* ALWAYS FIXED BOTTOM NAVIGATION BAR */}
-      <nav className="bg-white border-t border-gray-100 h-16 flex items-center justify-around px-2 flex-shrink-0 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] pb-safe">
-        <button 
-          onClick={() => router.push("/orders")} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
-        >
-          <span className="text-lg">📋</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Orders</span>
-        </button>
-        <button 
-          onClick={() => router.push("/delivery-settings")} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
-        >
-          <span className="text-lg">⚙️</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Settings</span>
-        </button>
-        <button 
-          onClick={() => router.push("/profile")} 
-          className="flex flex-col items-center justify-center flex-1 h-full text-gray-400 hover:text-gray-600 transition"
-        >
-          <span className="text-lg">👤</span>
-          <span className="text-[10px] font-bold mt-1 tracking-tight">Profile</span>
-        </button>
-      </nav>
-
+      <div className="h-4 flex-shrink-0 border-t border-gray-100 bg-white" />
     </div>
   );
 }

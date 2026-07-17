@@ -2,6 +2,7 @@
 
 // components/restro/LedgerClient.tsx
 
+import Link from "next/link";
 import {
   FormEvent,
   useCallback,
@@ -285,9 +286,7 @@ export default function LedgerClient() {
   }
 
   async function handleExport() {
-    if (exporting || loading) {
-      return;
-    }
+    if (exporting || loading) return;
 
     setExporting(true);
     setError(null);
@@ -661,12 +660,10 @@ export default function LedgerClient() {
                 const debit = numberValue(row.Debit);
                 const credit = numberValue(row.Credit);
                 const isDebit = debit > 0;
+                const rdsId = String(row.RDSId ?? "").trim();
 
-                return (
-                  <article
-                    key={`${row.RDSId}-${index}`}
-                    className="ledger-entry border-b border-slate-100 px-4 py-4 last:border-b-0"
-                  >
+                const content = (
+                  <>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <span
@@ -738,8 +735,16 @@ export default function LedgerClient() {
                       </div>
                     </div>
 
-                    <div className="mt-3 text-[10px] font-semibold text-slate-400">
-                      {row.CreatedAtFormatted || row.CreatedAt || "-"}
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        {row.CreatedAtFormatted || row.CreatedAt || "-"}
+                      </span>
+
+                      {rdsId ? (
+                        <span className="text-[9px] font-black text-blue-700">
+                          View Details →
+                        </span>
+                      ) : null}
                     </div>
 
                     {row.Remarks ? (
@@ -750,6 +755,23 @@ export default function LedgerClient() {
                         {row.Remarks}
                       </div>
                     ) : null}
+                  </>
+                );
+
+                return rdsId ? (
+                  <Link
+                    key={`${row.RDSId}-${index}`}
+                    href={`/ledger/receipt/${encodeURIComponent(rdsId)}`}
+                    className="ledger-entry block border-b border-slate-100 px-4 py-4 transition hover:bg-slate-50 active:bg-slate-100 last:border-b-0"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <article
+                    key={`${row.RDSId}-${index}`}
+                    className="ledger-entry border-b border-slate-100 px-4 py-4 last:border-b-0"
+                  >
+                    {content}
                   </article>
                 );
               })}

@@ -12,15 +12,138 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  background: #eef2f7;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================================
+   COMMON RESTRO SHELL
+   ========================================================= */
+
+.restro-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.restro-shell-content {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Protected legacy pages ka outer mobile container common shell ke
+ * andar full available space le. Existing business logic unchanged.
+ */
+.restro-shell-content > div {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+/*
+ * Old pages me header/nav alag-alag nesting level par hain.
+ * Common shell active hone par saare legacy headers aur nav hide.
+ *
+ * Common header/nav restro-shell-content ke bahar hain, isliye
+ * un par ye rules apply nahi honge.
+ */
+.restro-shell-content header,
+.restro-shell-content nav,
+.restro-shell-content [role="navigation"] {
+  display: none !important;
+}
+
+/*
+ * Kuch old pages bottom nav ko fixed/sticky div ke roop me render
+ * karte hain. Common labels se un wrappers ko bhi hide karein.
+ */
+.restro-shell-content .fixed.bottom-0,
+.restro-shell-content .sticky.bottom-0,
+.restro-shell-content [class*="fixed"][class*="bottom-0"],
+.restro-shell-content [class*="sticky"][class*="bottom-0"] {
+  display: none !important;
+}
+
+/*
+ * Legacy pages ka main section shell ke andar independently scroll kare.
+ */
+.restro-shell-content main {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  padding-bottom: 1rem !important;
+}
+
+/*
+ * Kuch pages main tag use nahi karte. Unke scroll containers ko safe
+ * height mile, lekin form/card layout disturb na ho.
+ */
+.restro-shell-content > div > section,
+.restro-shell-content > div > div {
+  max-width: 100%;
+}
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+
+.restro-shell-content * {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.restro-shell-content *::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.restro-shell-content *::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.restro-shell-content *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =========================================================
+   MOBILE SAFE AREA
+   ========================================================= */
+
+@supports (padding: max(0px)) {
+  .restro-shell-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .restro-shell-nav {
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+  }
 }

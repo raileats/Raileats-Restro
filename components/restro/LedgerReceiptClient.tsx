@@ -222,26 +222,72 @@ export default function LedgerReceiptClient({
   const isDebit =
     debit > 0;
 
-  const detailRows = [
-    [
-      "Reference",
-      entry?.OrderId || "-",
-    ],
-    [
+  const normalizedSource =
+    normalizeSource(
+      entry?.EntrySource
+    );
+
+  const isOrderEntry =
+    normalizedSource ===
+    "order";
+
+  const isPaymentEntry =
+    normalizedSource ===
+      "paymentpaid" ||
+    normalizedSource ===
+      "paymentreceived";
+
+  const isCreditNoteEntry =
+    normalizedSource ===
+    "creditnote";
+
+  const isDebitNoteEntry =
+    normalizedSource ===
+    "debitnote";
+
+  const detailRows: Array<
+    [string, string]
+  > = [];
+
+  detailRows.push([
+    isOrderEntry
+      ? "Order ID"
+      : isPaymentEntry
+      ? "Payment Reference"
+      : isCreditNoteEntry
+      ? "Credit Note Reference"
+      : isDebitNoteEntry
+      ? "Debit Note Reference"
+      : "Reference",
+    entry?.OrderId || "-",
+  ]);
+
+  if (
+    entry?.PaymentMode
+  ) {
+    detailRows.push([
       "Payment Mode",
-      entry?.PaymentMode || "-",
-    ],
+      entry.PaymentMode,
+    ]);
+  }
+
+  const statusText =
     [
+      entry?.Status,
+      entry?.SubStatus,
+    ]
+      .filter(Boolean)
+      .join(" - ");
+
+  if (statusText) {
+    detailRows.push([
       "Status",
-      [
-        entry?.Status,
-        entry?.SubStatus,
-      ]
-        .filter(Boolean)
-        .join(" - ") || "-",
-    ],
-    [
-      "Delivery",
+      statusText,
+    ]);
+  }
+
+  if (isOrderEntry) {
+    const deliveryText =
       [
         formatDate(
           entry?.DeliveryDate
@@ -253,13 +299,24 @@ export default function LedgerReceiptClient({
             value &&
             value !== "-"
         )
-        .join(" • ") || "-",
-    ],
-    [
-      "Coupon Code",
-      entry?.CouponCode || "-",
-    ],
-  ];
+        .join(" • ");
+
+    if (deliveryText) {
+      detailRows.push([
+        "Delivery",
+        deliveryText,
+      ]);
+    }
+
+    if (
+      entry?.CouponCode
+    ) {
+      detailRows.push([
+        "Coupon Code",
+        entry.CouponCode,
+      ]);
+    }
+  }
 
   const calculationRows = [
     [

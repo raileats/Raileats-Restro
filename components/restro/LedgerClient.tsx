@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import LedgerSettlementButton from "@/components/restro/LedgerSettlementButton";
+import LedgerPaymentRequestButton from "@/components/restro/LedgerPaymentRequestButton";
 
 type LedgerRow = {
   RDSId: number | string | null;
@@ -482,6 +483,8 @@ export default function LedgerClient() {
             <LedgerPaymentsButton />
 
             <LedgerSettlementButton />
+
+            <LedgerPaymentRequestButton />
           </div>
         </form>
 

@@ -4,6 +4,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
 import {
   usePathname,
   useRouter,
@@ -193,6 +194,45 @@ function pageTitle(
   return "Restro Panel";
 }
 
+function readStoredRestro() {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return null;
+  }
+
+  try {
+    const raw =
+      window.localStorage.getItem(
+        "restro"
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed =
+      JSON.parse(
+        raw
+      );
+
+    if (
+      !parsed ||
+      !Number(
+        parsed.RestroCode
+      )
+    ) {
+      return null;
+    }
+
+    return parsed as
+      RestroSessionData;
+  } catch {
+    return null;
+  }
+}
+
 export default function RestroShell({
   children,
 }: Props) {
@@ -217,16 +257,16 @@ export default function RestroShell({
     );
 
   const [
-    loading,
-    setLoading,
+    initialized,
+    setInitialized,
   ] =
     useState(
-      protectedPath
+      !protectedPath
     );
 
   const [
-    error,
-    setError,
+    sessionWarning,
+    setSessionWarning,
   ] =
     useState<string | null>(
       null
@@ -238,24 +278,56 @@ export default function RestroShell({
   ] =
     useState(false);
 
-  const loadSession =
+  /*
+   * Local safe session summary immediately load hoti hai.
+   * Isse har tab click par full-screen "Verifying..." spinner nahi aata.
+   * Actual security proxy.ts aur HTTP-only cookie se enforce hoti hai.
+   */
+  useEffect(() => {
+    if (
+      !protectedPath
+    ) {
+      setInitialized(
+        true
+      );
+      return;
+    }
+
+    const stored =
+      readStoredRestro();
+
+    if (stored) {
+      setRestro(
+        stored
+      );
+    }
+
+    setInitialized(
+      true
+    );
+  }, [
+    protectedPath,
+  ]);
+
+  const verifySession =
     useCallback(
       async () => {
         if (
           !protectedPath
         ) {
-          setLoading(
-            false
-          );
           return;
         }
 
-        setLoading(
-          true
-        );
-        setError(
-          null
-        );
+        const controller =
+          new AbortController();
+
+        const timeout =
+          window.setTimeout(
+            () => {
+              controller.abort();
+            },
+            8000
+          );
 
         try {
           const response =
@@ -264,24 +336,42 @@ export default function RestroShell({
               {
                 method:
                   "GET",
+
                 cache:
                   "no-store",
+
                 credentials:
                   "include",
+
+                signal:
+                  controller.signal,
               }
             );
 
           const json:
             SessionResponse =
             await response
-              .json();
+              .json()
+              .catch(
+                () => ({
+                  ok:
+                    false,
+                })
+              );
 
           if (
-            !response.ok ||
-            !json.ok ||
-            !json.authenticated ||
-            !json.restro
+            response.status ===
+              401 ||
+            !json.authenticated
           ) {
+            try {
+              window.localStorage.removeItem(
+                "restro"
+              );
+            } catch {
+              // Ignore storage error.
+            }
+
             const next =
               encodeURIComponent(
                 pathname
@@ -294,15 +384,27 @@ export default function RestroShell({
             return;
           }
 
+          if (
+            !response.ok ||
+            !json.ok ||
+            !json.restro
+          ) {
+            setSessionWarning(
+              json.error ||
+              "Session details temporarily unavailable"
+            );
+
+            return;
+          }
+
           setRestro(
             json.restro
           );
 
-          /*
-           * Existing Orders/Menu/Profile pages abhi localStorage ke
-           * safe restro summary ko read karte hain. Password kabhi
-           * store nahi hota.
-           */
+          setSessionWarning(
+            null
+          );
+
           try {
             window.localStorage.setItem(
               "restro",
@@ -310,25 +412,27 @@ export default function RestroShell({
                 json.restro
               )
             );
-          } catch (
-            storageError
-          ) {
-            console.log(
-              "RESTRO SAFE SESSION STORAGE FAILED",
-              storageError
-            );
+          } catch {
+            // Ignore storage error.
           }
         } catch (
-          sessionError: any
+          error: any
         ) {
-          setError(
-            sessionError
-              ?.message ||
-            "Unable to verify restaurant session"
-          );
+          /*
+           * Network/timeout error par current page block nahi karni.
+           * Proxy already secure route verify kar chuka hai.
+           */
+          if (
+            error?.name !==
+            "AbortError"
+          ) {
+            setSessionWarning(
+              "Session refresh temporarily unavailable"
+            );
+          }
         } finally {
-          setLoading(
-            false
+          window.clearTimeout(
+            timeout
           );
         }
       },
@@ -340,9 +444,9 @@ export default function RestroShell({
     );
 
   useEffect(() => {
-    loadSession();
+    verifySession();
   }, [
-    loadSession,
+    verifySession,
   ]);
 
   async function handleLogout() {
@@ -355,9 +459,6 @@ export default function RestroShell({
     setLoggingOut(
       true
     );
-    setError(
-      null
-    );
 
     try {
       await fetch(
@@ -365,17 +466,13 @@ export default function RestroShell({
         {
           method:
             "POST",
+
           credentials:
             "include",
         }
       );
-    } catch (
-      logoutError
-    ) {
-      console.log(
-        "RESTRO LOGOUT REQUEST FAILED",
-        logoutError
-      );
+    } catch {
+      // Local logout still continues.
     } finally {
       try {
         window.localStorage.removeItem(
@@ -386,7 +483,7 @@ export default function RestroShell({
           "restro_new_orders"
         );
       } catch {
-        // Ignore browser storage errors.
+        // Ignore storage errors.
       }
 
       router.replace(
@@ -442,40 +539,17 @@ export default function RestroShell({
     );
   }
 
-  if (loading) {
+  if (
+    !initialized
+  ) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#f7f9fc] px-5">
         <div className="rounded-3xl border border-slate-200 bg-white px-8 py-7 text-center shadow-lg">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
 
           <div className="mt-4 text-sm font-black text-slate-700">
-            Verifying secure session...
+            Opening restaurant panel...
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (
-    error &&
-    !restro
-  ) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#f7f9fc] px-5">
-        <div className="w-full max-w-sm rounded-3xl border border-red-200 bg-white p-6 text-center shadow-lg">
-          <div className="text-sm font-bold text-red-700">
-            {error}
-          </div>
-
-          <button
-            type="button"
-            onClick={
-              loadSession
-            }
-            className="mt-4 h-11 w-full rounded-xl bg-blue-600 text-sm font-black text-white"
-          >
-            Try Again
-          </button>
         </div>
       </div>
     );
@@ -539,10 +613,16 @@ export default function RestroShell({
         </div>
       </header>
 
-      {error ? (
-        <div className="flex-shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700">
-          {error}
-        </div>
+      {sessionWarning ? (
+        <button
+          type="button"
+          onClick={
+            verifySession
+          }
+          className="flex-shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-left text-[10px] font-bold text-amber-700"
+        >
+          {sessionWarning}. Tap to retry.
+        </button>
       ) : null}
 
       <div className="restro-shell-content min-h-0 flex-1 overflow-hidden">
@@ -568,6 +648,9 @@ export default function RestroShell({
                 }
                 href={
                   item.href
+                }
+                prefetch={
+                  true
                 }
                 className={[
                   "flex min-w-0 flex-col items-center justify-center rounded-xl px-1 py-1.5 text-center transition",

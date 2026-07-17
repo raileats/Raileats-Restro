@@ -3,6 +3,8 @@
 // components/restro/LedgerClient.tsx
 
 import Link from "next/link";
+import LedgerStatementButton from "@/components/restro/LedgerStatementButton";
+import LedgerPaymentsButton from "@/components/restro/LedgerPaymentsButton";
 import {
   FormEvent,
   useCallback,
@@ -444,7 +446,7 @@ export default function LedgerClient() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <button
               type="button"
               onClick={() => {
@@ -473,6 +475,10 @@ export default function LedgerClient() {
             >
               {exporting ? "Exporting..." : "Excel"}
             </button>
+
+            <LedgerStatementButton />
+
+            <LedgerPaymentsButton />
           </div>
         </form>
 

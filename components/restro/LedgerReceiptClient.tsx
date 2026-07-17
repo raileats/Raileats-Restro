@@ -27,6 +27,10 @@ type Entry = {
   DeliveryTime: string | null;
   PaymentMode: string | null;
   CouponCode: string | null;
+  RestroPrice?: number | string | null;
+  BasePrice?: number | string | null;
+  DiscountedBasePrice?: number | string | null;
+  TotalAmount?: number | string | null;
   SettlementAmount: number | string | null;
   Debit?: number | string | null;
   Credit?: number | string | null;
@@ -35,13 +39,13 @@ type Entry = {
   PPDAmount?: number | string | null;
   CODAmount?: number | string | null;
   REDiscount?: number | string | null;
+  OrderPenalty?: number | string | null;
   OrderCharges?: number | string | null;
   PlatformCharge?: number | string | null;
   GSTAmount?: number | string | null;
   Commission?: number | string | null;
   IGST?: number | string | null;
   RestroDiscount?: number | string | null;
-  CouponDiscount?: number | string | null;
   CreatedAt: string | null;
   CreatedAtFormatted?: string | null;
 };
@@ -259,6 +263,22 @@ export default function LedgerReceiptClient({
 
   const calculationRows = [
     [
+      "Restaurant Price",
+      entry?.RestroPrice,
+    ],
+    [
+      "Base Price",
+      entry?.BasePrice,
+    ],
+    [
+      "Discounted Base Price",
+      entry?.DiscountedBasePrice,
+    ],
+    [
+      "Order Total",
+      entry?.TotalAmount,
+    ],
+    [
       "PPD Amount",
       entry?.PPDAmount,
     ],
@@ -279,6 +299,10 @@ export default function LedgerReceiptClient({
       entry?.PlatformCharge,
     ],
     [
+      "Order Penalty",
+      entry?.OrderPenalty,
+    ],
+    [
       "Order Charges",
       entry?.OrderCharges,
     ],
@@ -289,10 +313,6 @@ export default function LedgerReceiptClient({
     [
       "Restaurant Discount",
       entry?.RestroDiscount,
-    ],
-    [
-      "Coupon Discount",
-      entry?.CouponDiscount,
     ],
     [
       "RE Discount",

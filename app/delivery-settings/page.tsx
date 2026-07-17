@@ -114,6 +114,180 @@ export default function DeliverySettingsPage() {
   return (
     <div className="h-full w-full flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl">
 
-</div>
+
+      {/* TITLE */}
+      <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full px-4">
+        <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+          Settings
+        </h2>
+
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+          Configure Delivery Preferences
+        </p>
+      </div>
+
+      {/* CONTENT */}
+      <main className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-pan-y">
+
+        <div className="bg-white rounded-3xl border border-gray-100/80 p-5 shadow-sm flex flex-col gap-4">
+
+          {/* STATUS */}
+          <div>
+            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+              Raileats Status
+            </label>
+
+            <select
+              value={form.RaileatsStatus ? "true" : "false"}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  RaileatsStatus: e.target.value === "true",
+                })
+              }
+              className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+            >
+              <option value="true">🟢 Online</option>
+              <option value="false">🔴 Offline</option>
+            </select>
+          </div>
+
+          {/* WEEKLY OFF */}
+          <div>
+            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+              Weekly Off
+            </label>
+
+            <select
+              value={form.WeeklyOff}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  WeeklyOff: e.target.value,
+                })
+              }
+              className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+            >
+              <option value="noOff">No Off</option>
+              <option value="SUN">Sunday</option>
+              <option value="MON">Monday</option>
+              <option value="TUE">Tuesday</option>
+              <option value="WED">Wednesday</option>
+              <option value="THU">Thursday</option>
+              <option value="FRI">Friday</option>
+              <option value="SAT">Saturday</option>
+            </select>
+          </div>
+
+          {/* TIME */}
+          <div className="grid grid-cols-2 gap-3">
+
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Open Time
+              </label>
+
+              <input
+                type="time"
+                value={form.open_time}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    open_time: e.target.value,
+                  })
+                }
+                className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm font-bold outline-none focus:border-[#2f54eb] focus:ring-2 focus:ring-blue-100 transition-all text-gray-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Closed Time
+              </label>
+
+              <input
+                type="time"
+                value={form.closed_time}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    closed_time: e.target.value,
+                  })
+                }
+                className="w-full h-11 bg-white border border-gray-300 rounded-xl px-3 text-sm font-bold outline-none focus:border-[#2f54eb] focus:ring-2 focus:ring-blue-100 transition-all text-gray-800"
+              />
+            </div>
+
+          </div>
+
+          {/* ORDER */}
+          <div className="grid grid-cols-2 gap-3">
+
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Min Order (₹)
+              </label>
+
+              <input
+                type="number"
+                value={form.MinimumOrderValue}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    MinimumOrderValue: e.target.value,
+                  })
+                }
+                placeholder="e.g. 99"
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                Cut Off (Mins)
+              </label>
+
+              <input
+                type="number"
+                value={form.CutOffTime}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    CutOffTime: e.target.value,
+                  })
+                }
+                placeholder="e.g. 60"
+                className="w-full h-11 bg-gray-50 border border-gray-200/80 rounded-xl px-4 text-xs font-bold outline-none focus:border-[#2f54eb] focus:bg-white transition-all text-gray-800"
+              />
+            </div>
+
+          </div>
+
+          {/* BUTTONS */}
+          <div className="pt-2 space-y-2.5">
+
+            <button
+              onClick={saveSettings}
+              disabled={saving}
+              className="w-full h-11 bg-[#2f54eb] hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md shadow-blue-100 transition duration-150 disabled:opacity-60 flex items-center justify-center tracking-wide"
+            >
+              {saving ? "SAVING CONFIGS..." : "SAVE SETTINGS"}
+            </button>
+
+            <button
+              onClick={logout}
+              className="w-full h-11 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-black rounded-xl transition duration-150 flex items-center justify-center tracking-wide"
+            >
+              LOGOUT FROM RESTRO
+            </button>
+
+          </div>
+
+        </div>
+
+      </main>
+
+
+    </div>
   );
 }

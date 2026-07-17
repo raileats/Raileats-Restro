@@ -448,7 +448,274 @@ export default function OrdersPage() {
   return (
     <div className="h-full w-full flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none overscroll-contain">
       
-{/* DYNAMIC ACTION SUB-STATUS SELECTION MODAL ENGINE */}
+
+      {/* FIXED META & PACKED CONTROL TABS */}
+      <div className="bg-white flex-shrink-0 pt-3 pb-3 border-b border-gray-100 z-40 w-full">
+        {/* STATION META */}
+        <div className="px-4 mb-3">
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Orders</h2>
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+            Station : <span className="text-[#2f54eb] font-extrabold">{restro?.StationCode || "N/A"}</span>
+          </p>
+        </div>
+
+        {/* CONTROLS: EXACTLY TWO TABS AT A TIME */}
+        <div className="flex items-center justify-between px-4 gap-2 w-full">
+          <button 
+            onClick={handlePrevTabs}
+            className="w-8 h-9 bg-gray-50 border border-gray-200/70 active:bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 font-black flex-shrink-0 text-xs shadow-sm"
+          >
+            ❮
+          </button>
+
+          <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
+            {visibleTabs.map((tab) => {
+              const isActive = activeTab === tab.label;
+              return (
+                <button
+                  key={tab.label}
+                  onClick={() => setActiveTab(tab.label)}
+                  className={`w-full truncate text-ellipsis px-2 py-2 rounded-xl text-xs font-bold border transition-all duration-150 flex items-center justify-center gap-1.5 ${
+                    isActive
+                      ? "bg-[#2f54eb] text-white border-[#2f54eb] shadow-sm shadow-blue-100"
+                      : "bg-gray-50 text-gray-600 border-gray-200/80 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="flex-shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button 
+            onClick={handleNextTabs}
+            className="w-8 h-9 bg-gray-50 border border-gray-200/70 active:bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 font-black flex-shrink-0 text-xs shadow-sm"
+          >
+            ❯
+          </button>
+        </div>
+      </div>
+
+      {/* 2. SCROLLABLE MIDDLE MAIN CONTENT VIEW */}
+      <main
+        ref={mainScrollRef}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+        onTouchCancel={handlePullEnd}
+        className="flex-1 overflow-y-auto bg-[#f7f9fc] px-4 py-4 space-y-4 touch-action-pan-y"
+      >
+        {(pullDistance > 0 || isRefreshing) && (
+          <div
+            className="flex items-center justify-center text-[11px] font-black text-[#2f54eb] transition-all"
+            style={{ height: `${Math.max(28, pullDistance)}px` }}
+          >
+            <span className={isRefreshing ? "animate-spin mr-2" : "mr-2"}>
+              ⟳
+            </span>
+            {isRefreshing ? "Refreshing orders..." : pullDistance >= 72 ? "Release to refresh" : "Pull to refresh"}
+          </div>
+        )}
+
+        {pageError ? (
+          <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-white rounded-3xl border border-red-100 p-6 shadow-sm flex flex-col items-center w-full">
+              <span className="text-4xl mb-3">⚠️</span>
+              <h3 className="text-base font-black text-gray-900">Orders nahi khul paaye</h3>
+              <p className="text-xs text-gray-500 mt-1 font-medium max-w-[240px]">
+                {pageError}
+              </p>
+              <button
+                onClick={loadData}
+                className="mt-4 bg-[#2f54eb] text-white text-xs font-black px-5 py-2.5 rounded-xl active:scale-[0.99]"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : loading ? (
+          <div className="h-full flex flex-col items-center justify-center font-bold text-sm text-gray-400 gap-2">
+            <span className="text-2xl animate-spin">⏳</span>
+            Fetching Fresh Orders...
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm flex flex-col items-center w-full">
+              <span className="text-5xl mb-3">🍱</span>
+              <h3 className="text-base font-black text-gray-800">No Orders Present</h3>
+              <p className="text-xs text-gray-400 mt-1 font-medium max-w-[220px]">
+                Orders matching "{activeTab}" category are empty right now.
+              </p>
+            </div>
+          </div>
+        ) : (
+          filteredOrders.map((item, index) => (
+            <div 
+              key={item.OrderId || index} 
+              className="bg-white rounded-3xl border border-gray-100/80 p-4 shadow-sm flex flex-col gap-3.5 relative"
+            >
+              <div className="flex items-center justify-between">
+                <span className="bg-blue-50 text-[#2f54eb] font-extrabold text-[10px] px-2.5 py-1 rounded-lg tracking-wide">
+                  #{item.OrderId}
+                </span>
+                <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-lg ${
+                  item.Status === 'New Order' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                }`}>
+                  {item.Status}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between border-b border-dashed border-gray-100 pb-3">
+                <div className="min-w-0">
+                  <h4 className="font-black text-base text-gray-900 truncate max-w-[240px]">
+                    {item.CustomerName}
+                  </h4>
+                  <p className="text-xs font-bold text-gray-400 mt-0.5">
+                    {item.CustomerMobile}
+                  </p>
+                </div>
+                {item.CustomerMobile && (
+                  <a 
+                    href={`tel:${item.CustomerMobile}`} 
+                    className="w-9 h-9 bg-blue-50 hover:bg-blue-100 rounded-full flex items-center justify-center transition flex-shrink-0"
+                  >
+                    <svg className="w-3.5 h-3.5 text-[#2f54eb]" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-1C7.82 18 2 12.18 2 5V3z"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">🚂</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Train</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.TrainNumber}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">💺</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Coach/Seat</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.Coach} / {item.Seat}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">📅</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryDate}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg mt-0.5">🕒</span>
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Time</p>
+                    <p className="font-black text-gray-800 text-xs mt-0.5">{item.DeliveryTime}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* DYNAMIC ORDER PROCESS MARKING CTAs FOR RESTRO */}
+              <div className="border-t border-gray-100 pt-3 mt-1 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  
+                  {/* Left-side Category Info */}
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 truncate min-w-0">
+                    <span className="text-sm">🏪</span>
+                    <span className="truncate max-w-[100px]">{item.RestroName}</span>
+                  </div>
+
+                  {/* Contextual Quick Actions Mapping */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    
+                    {/* CASE 1: NEW ORDER TAB -> ACCEPT / REJECT BUTTONS */}
+                    {activeTab === "New Order" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "In Kitchen")}
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "cancel")}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {/* CASE 2: IN KITCHEN TAB -> DISPATCH AS OUT FOR DELIVERY */}
+                    {activeTab === "In Kitchen" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "Out for Delivery")}
+                          className="bg-[#2f54eb] hover:bg-blue-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Dispatch 🛵
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "cancel")}
+                          className="text-gray-400 font-bold text-[11px] px-2 py-1.5"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+
+                    {/* CASE 3: OUT FOR DELIVERY TAB -> DELIVERED / MISSED / BAD DELIVERY */}
+                    {activeTab === "Out for Delivery" && (
+                      <>
+                        <button 
+                          disabled={submittingAction}
+                          onClick={() => handleUpdateStatus(item, "Delivered")}
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[12px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                        >
+                          Delivered ✅
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "notdelivered")}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Missed ⚠️
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal(item, "baddelivery")}
+                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Bad Delivery 🚨
+                        </button>
+                      </>
+                    )}
+
+                    {/* View Details Default Button */}
+                    <button 
+                      onClick={() => { setDetailedOrder(item); setDetailsModalOpen(true); }}
+                      className="bg-gray-50 hover:bg-gray-100 border border-gray-100 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-gray-700 transition"
+                    >
+                      Details
+                    </button>
+
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          ))
+        )}
+      </main>
+
+
+      {/* DYNAMIC ACTION SUB-STATUS SELECTION MODAL ENGINE */}
       {actionModalOpen && selectedOrder && (
         <div className="absolute inset-0 bg-black/60 z-50 flex items-end justify-center animate-fadeIn">
           <div className="bg-white w-full rounded-t-[32px] p-6 max-w-md shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">

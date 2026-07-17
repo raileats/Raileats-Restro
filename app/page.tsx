@@ -1,46 +1,164 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+// app/page.tsx
+
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+function safeNextPath(
+  value: unknown
+) {
+  const text =
+    String(
+      value ?? ""
+    ).trim();
+
+  if (
+    !text ||
+    !text.startsWith("/") ||
+    text.startsWith("//") ||
+    text.startsWith("/api/") ||
+    text === "/"
+  ) {
+    return "/orders";
+  }
+
+  return text;
+}
+
+function getRequestedNextPath() {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return "/orders";
+  }
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  return safeNextPath(
+    params.get("next")
+  );
+}
 
 export default function Home() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [mobile, setMobile] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [
+    mobile,
+    setMobile,
+  ] =
+    useState("");
+
+  const [
+    password,
+    setPassword,
+  ] =
+    useState("");
+
+  const [
+    showPassword,
+    setShowPassword,
+  ] =
+    useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
+  const [
+    checkingSession,
+    setCheckingSession,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
-    let active = true;
+    let active =
+      true;
 
     async function checkExistingSession() {
       try {
-        const response = await fetch("/api/auth/restro-session", {
-          method: "GET",
-          cache: "no-store",
-        });
+        const response =
+          await fetch(
+            "/api/auth/restro-session",
+            {
+              method:
+                "GET",
 
-        const json = await response.json().catch(() => ({}));
+              cache:
+                "no-store",
 
-        if (!active) return;
+              credentials:
+                "include",
+            }
+          );
 
-        if (response.ok && json?.ok && json?.authenticated && json?.restro) {
-          localStorage.setItem("restro", JSON.stringify(json.restro));
-          router.replace("/orders");
+        const json =
+          await response
+            .json()
+            .catch(
+              () => ({})
+            );
+
+        if (!active) {
           return;
         }
 
-        localStorage.removeItem("restro");
+        if (
+          response.ok &&
+          json?.ok &&
+          json?.authenticated &&
+          json?.restro
+        ) {
+          window.localStorage.setItem(
+            "restro",
+            JSON.stringify(
+              json.restro
+            )
+          );
+
+          router.replace(
+            getRequestedNextPath()
+          );
+
+          return;
+        }
+
+        window.localStorage.removeItem(
+          "restro"
+        );
       } catch {
         if (active) {
-          localStorage.removeItem("restro");
+          window.localStorage.removeItem(
+            "restro"
+          );
         }
       } finally {
         if (active) {
-          setCheckingSession(false);
+          setCheckingSession(
+            false
+          );
         }
       }
     }
@@ -48,62 +166,142 @@ export default function Home() {
     checkExistingSession();
 
     return () => {
-      active = false;
+      active =
+        false;
     };
-  }, [router]);
+  }, [
+    router,
+  ]);
 
-  async function handleLogin(event?: FormEvent) {
+  async function handleLogin(
+    event?:
+      FormEvent
+  ) {
     event?.preventDefault();
 
-    if (loading) return;
-
-    const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
-
-    if (cleanMobile.length !== 10 || !password.trim()) {
-      setError("Please enter valid mobile number and password");
+    if (loading) {
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const cleanMobile =
+      mobile
+        .replace(
+          /\D/g,
+          ""
+        )
+        .slice(
+          -10
+        );
+
+    if (
+      cleanMobile.length !==
+        10 ||
+      !password.trim()
+    ) {
+      setError(
+        "Please enter valid mobile number and password"
+      );
+
+      return;
+    }
+
+    setLoading(
+      true
+    );
+
+    setError(
+      null
+    );
 
     try {
-      const response = await fetch("/api/auth/restro-login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mobile: cleanMobile,
-          password,
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/auth/restro-login",
+          {
+            method:
+              "POST",
 
-      const json = await response.json().catch(() => ({}));
+            credentials:
+              "include",
 
-      if (!response.ok || !json?.ok || !json?.restro) {
-        throw new Error(json?.error || "Invalid credentials");
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify(
+                {
+                  mobile:
+                    cleanMobile,
+
+                  password,
+                }
+              ),
+          }
+        );
+
+      const json =
+        await response
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (
+        !response.ok ||
+        !json?.ok ||
+        !json?.restro
+      ) {
+        throw new Error(
+          json?.error ||
+          "Invalid credentials"
+        );
       }
 
-      // Temporary compatibility for existing Orders/Menu/Profile pages.
-      // Only safe public restaurant fields are stored; password is never stored.
-      localStorage.setItem("restro", JSON.stringify(json.restro));
+      /*
+       * Existing Orders/Menu/Profile pages ke compatibility ke liye
+       * sirf safe restaurant summary store hoti hai. Password nahi.
+       */
+      window.localStorage.setItem(
+        "restro",
+        JSON.stringify(
+          json.restro
+        )
+      );
 
-      router.replace("/orders");
+      router.replace(
+        getRequestedNextPath()
+      );
+
       router.refresh();
-    } catch (loginError: any) {
-      localStorage.removeItem("restro");
-      setError(loginError?.message || "Login failed");
+    } catch (
+      loginError: any
+    ) {
+      window.localStorage.removeItem(
+        "restro"
+      );
+
+      setError(
+        loginError
+          ?.message ||
+        "Login failed"
+      );
     } finally {
-      setLoading(false);
+      setLoading(
+        false
+      );
     }
   }
 
-  if (checkingSession) {
+  if (
+    checkingSession
+  ) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#f7f9fc]">
         <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-5 py-4 text-xs font-black text-gray-600 shadow-sm">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#2f54eb] border-t-transparent" />
+
           Checking secure session...
         </div>
       </div>
@@ -111,7 +309,7 @@ export default function Home() {
   }
 
   return (
-    <div className="relative mx-auto flex h-[100dvh] max-w-md flex-col justify-between overflow-hidden border-x border-gray-100 bg-white shadow-2xl">
+    <div className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col justify-between overflow-hidden border-x border-gray-100 bg-white shadow-2xl">
       <header className="flex flex-shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-5 py-4">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-yellow-200 bg-white shadow-sm">
           <img
@@ -125,6 +323,7 @@ export default function Home() {
           <h1 className="mb-0.5 text-base font-black leading-none tracking-tight text-gray-950">
             RailEats
           </h1>
+
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
             Restro Panel
           </p>
@@ -133,13 +332,16 @@ export default function Home() {
 
       <main className="flex flex-1 flex-col justify-center overflow-y-auto bg-[#f7f9fc] p-5">
         <form
-          onSubmit={handleLogin}
+          onSubmit={
+            handleLogin
+          }
           className="w-full rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"
         >
           <div className="mb-5 text-center">
             <h2 className="text-2xl font-black tracking-tight text-gray-900">
               Restro Login
             </h2>
+
             <p className="mt-1 text-xs font-medium text-gray-400">
               Securely sign in to manage live train orders.
             </p>
@@ -160,11 +362,30 @@ export default function Home() {
               type="tel"
               inputMode="numeric"
               autoComplete="username"
-              maxLength={10}
-              value={mobile}
-              onChange={(event) => {
-                setMobile(event.target.value.replace(/\D/g, "").slice(0, 10));
-                setError(null);
+              maxLength={
+                10
+              }
+              value={
+                mobile
+              }
+              onChange={(
+                event
+              ) => {
+                setMobile(
+                  event.target.value
+                    .replace(
+                      /\D/g,
+                      ""
+                    )
+                    .slice(
+                      0,
+                      10
+                    )
+                );
+
+                setError(
+                  null
+                );
               }}
               placeholder="Enter registered mobile number"
               className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-xs font-bold text-gray-800 outline-none transition-all focus:border-[#2f54eb] focus:bg-white"
@@ -178,12 +399,25 @@ export default function Home() {
 
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
-                value={password}
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
+                value={
+                  password
+                }
                 autoComplete="current-password"
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setError(null);
+                onChange={(
+                  event
+                ) => {
+                  setPassword(
+                    event.target.value
+                  );
+
+                  setError(
+                    null
+                  );
                 }}
                 placeholder="Enter account password"
                 className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 pr-12 text-xs font-bold text-gray-800 outline-none transition-all focus:border-[#2f54eb] focus:bg-white"
@@ -191,23 +425,39 @@ export default function Home() {
 
               <button
                 type="button"
-                onClick={() => setShowPassword((current) => !current)}
+                onClick={() =>
+                  setShowPassword(
+                    (
+                      current
+                    ) =>
+                      !current
+                  )
+                }
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-base opacity-60 transition hover:opacity-100"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword
+                  ? "🙈"
+                  : "👁️"}
               </button>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading
+            }
             className="flex h-11 w-full items-center justify-center rounded-xl bg-[#2f54eb] text-xs font-black tracking-wide text-white shadow-md shadow-blue-100 transition duration-150 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+
                 Verifying...
               </span>
             ) : (

@@ -12,6 +12,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import LedgerSettlementButton from "@/components/restro/LedgerSettlementButton";
 
 type LedgerRow = {
   RDSId: number | string | null;
@@ -479,6 +480,8 @@ export default function LedgerClient() {
             <LedgerStatementButton />
 
             <LedgerPaymentsButton />
+
+            <LedgerSettlementButton />
           </div>
         </form>
 

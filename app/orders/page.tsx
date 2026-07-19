@@ -10,17 +10,37 @@ const supabase = createClient(
 );
 
 const CANCEL_REASONS = [
+  "Customer Plan Change",
+  "Customer Call Not Connect",
+  "Delivery Boy Missed",
   "Restro Closed",
+  "Train Late",
+  "Train Divert",
   "Item Issue",
   "Restro Refused without Reason",
-  "Other"
+  "Other",
+  "Low & Order",
+  "Natural Calamity",
 ];
 
-const NOT_DELIVERED_REASONS = [
-  "Restro Missed",
-  "Late Processing",
-  "Technical Issue"
+const OUTCOME_OPTIONS = [
+  "Partial Delivery",
+  "Bad Delivery",
+  "Customer Plan Change",
+  "Customer Call Not Connect",
+  "Customer Not on Seat",
+  "Customer Refused Delivery",
+  "Delivery Boy Missed",
+  "Restro Closed",
+  "Train Late",
+  "Train Divert",
+  "Item Issue",
+  "Restro Refused without Reason",
+  "Other",
+  "Low & Order",
+  "Natural Calamity",
 ];
+
 
 function readStoredRestro() {
   if (typeof window === "undefined") return null;
@@ -110,7 +130,7 @@ export default function OrdersPage() {
   // Status Modals Configuration Engine State
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [actionType, setActionType] = useState<"cancel" | "notdelivered" | "baddelivery" | "inkitchen" | "outfordelivery" | "delivered" | null>(null);
+  const [actionType, setActionType] = useState<"cancel" | "outcome" | "complaintresponse" | null>(null);
   const [subStatus, setSubStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -132,10 +152,11 @@ export default function OrdersPage() {
     { label: "New Order", icon: "🔔" },
     { label: "In Kitchen", icon: "🍳" },
     { label: "Out for Delivery", icon: "🛵" },
-    { label: "Delivered", icon: "✅" },
+    { label: "Restro Marked Delivered", icon: "✅" },
+    { label: "Complaints", icon: "⚠️" },
+    { label: "Delivered", icon: "🏁" },
     { label: "Cancelled", icon: "❌" },
-    { label: "Not Delivered", icon: "⚠️" },
-    { label: "Bad Delivery", icon: "🚨" }
+    { label: "Not Delivered", icon: "🚫" }
   ];
 
   // अभी कौन से दो टैब दिखेंगे
@@ -298,60 +319,40 @@ export default function OrdersPage() {
     }
   }
 
-  // Handle updates mapped to the Schema (Matching primary key string 'OrderId')
-  async function handleUpdateStatus(order: any, targetStatus: string, finalSubStatus = "", finalRemarks = "") {
+  // Secure restaurant order marking through server API.
+  async function handleUpdateStatus(
+    order: any,
+    action: "accept" | "dispatch" | "reject" | "delivered" | "outcome" | "complaintresponse",
+    finalSubStatus = "",
+    finalRemarks = "",
+  ) {
     try {
       setSubmittingAction(true);
-      const changedAt = new Date().toISOString();
-      const oldStatus = order?.Status ?? order?.OrderStatus ?? order?.CurrentStatus ?? null;
-      const restroName =
-        restro?.RestroName ||
-        order?.RestroName ||
-        order?.OutletName ||
-        "Restro";
-      const cleanRemarks = String(finalRemarks || "").trim();
-      
-      // Database Schema matching object payload
-      const { error } = await supabase
-        .from("Orders")
-        .update({
-          Status: targetStatus,
-          SubStatus: finalSubStatus || null,
-          UpdatedAt: changedAt
-        })
-        .eq("OrderId", order.OrderId); // Filter mapped with OrderId string primary key
 
-      if (error) throw error;
+      const response = await fetch("/api/restro/orders/status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order?.OrderId,
+          action,
+          subStatus: finalSubStatus || null,
+          remarks: String(finalRemarks || "").trim() || null,
+        }),
+      });
 
-      const { error: historyError } = await supabase
-        .from("OrderStatusHistory")
-        .insert({
-          OrderId: order.OrderId,
-          OldStatus: oldStatus,
-          NewStatus: targetStatus,
-          SubStatus: finalSubStatus || null,
-          Remarks: cleanRemarks || null,
-          Note: cleanRemarks || null,
-          ChangedBy: restroName,
-          UserType: "Restro",
-          UserName: restroName,
-          ActionSource: "Restro",
-          ChangedAt: changedAt,
-        });
-
-      if (historyError) {
-        console.error("Order history insert failed:", historyError);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.error || "Unable to update order");
       }
 
-      // Close modals and trigger local view reload
       setActionModalOpen(false);
       setSelectedOrder(null);
       setActionType(null);
       setSubStatus("");
       setRemarks("");
-      loadData();
-    } catch (err) {
-      alert("Failed to update order status. Please try again.");
+      await loadData();
+    } catch (err: any) {
+      alert(err?.message || "Failed to update order status. Please try again.");
       console.error(err);
     } finally {
       setSubmittingAction(false);
@@ -361,8 +362,11 @@ export default function OrdersPage() {
   const handleOpenActionModal = (order: any, type: typeof actionType) => {
     setSelectedOrder(order);
     setActionType(type);
+    setRemarks("");
     if (type === "cancel") setSubStatus(CANCEL_REASONS[0]);
-    if (type === "notdelivered") setSubStatus(NOT_DELIVERED_REASONS[0]);
+    if (type === "outcome" || type === "complaintresponse") {
+      setSubStatus(OUTCOME_OPTIONS[0]);
+    }
     setActionModalOpen(true);
   };
 
@@ -430,6 +434,15 @@ export default function OrdersPage() {
     if (activeTab === "Out for Delivery" && status === "out for delivery") {
       return true;
     }
+    if (
+      activeTab === "Restro Marked Delivered" &&
+      (status === "restro marked delivered" || status === "restromarkeddelivered")
+    ) {
+      return true;
+    }
+    if (activeTab === "Complaints" && (status === "complaints" || status === "complaint")) {
+      return true;
+    }
     if (activeTab === "Delivered" && status === "delivered") {
       return true;
     }
@@ -437,9 +450,6 @@ export default function OrdersPage() {
       return true;
     }
     if (activeTab === "Not Delivered" && status === "not delivered") {
-      return true;
-    }
-    if (activeTab === "Bad Delivery" && status === "bad delivery") {
       return true;
     }
     return false;
@@ -639,7 +649,7 @@ export default function OrdersPage() {
                       <>
                         <button 
                           disabled={submittingAction}
-                          onClick={() => handleUpdateStatus(item, "In Kitchen")}
+                          onClick={() => handleUpdateStatus(item, "accept")}
                           className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
                         >
                           Accept
@@ -658,7 +668,7 @@ export default function OrdersPage() {
                       <>
                         <button 
                           disabled={submittingAction}
-                          onClick={() => handleUpdateStatus(item, "Out for Delivery")}
+                          onClick={() => handleUpdateStatus(item, "dispatch")}
                           className="bg-[#2f54eb] hover:bg-blue-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
                         >
                           Dispatch 🛵
@@ -672,29 +682,32 @@ export default function OrdersPage() {
                       </>
                     )}
 
-                    {/* CASE 3: OUT FOR DELIVERY TAB -> DELIVERED / MISSED / BAD DELIVERY */}
+                    {/* OUT FOR DELIVERY: delivered waits for customer confirmation; every issue becomes a complaint. */}
                     {activeTab === "Out for Delivery" && (
                       <>
-                        <button 
+                        <button
                           disabled={submittingAction}
-                          onClick={() => handleUpdateStatus(item, "Delivered")}
-                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[12px] px-3 py-1.5 rounded-xl shadow-sm transition"
+                          onClick={() => handleUpdateStatus(item, "delivered")}
+                          className="bg-green-600 hover:bg-green-700 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-sm transition"
                         >
                           Delivered ✅
                         </button>
-                        <button 
-                          onClick={() => handleOpenActionModal(item, "notdelivered")}
+                        <button
+                          onClick={() => handleOpenActionModal(item, "outcome")}
                           className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
                         >
-                          Missed ⚠️
-                        </button>
-                        <button 
-                          onClick={() => handleOpenActionModal(item, "baddelivery")}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
-                        >
-                          Bad Delivery 🚨
+                          Mark Status
                         </button>
                       </>
+                    )}
+
+                    {activeTab === "Complaints" && (
+                      <button
+                        onClick={() => handleOpenActionModal(item, "complaintresponse")}
+                        className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                      >
+                        Respond
+                      </button>
                     )}
 
                     {/* View Details Default Button */}
@@ -722,7 +735,11 @@ export default function OrdersPage() {
             
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-gray-900 capitalize">
-                Mark Order As: {actionType === "cancel" ? "Cancelled" : actionType === "notdelivered" ? "Not Delivered" : "Bad Delivery"}
+                {actionType === "cancel"
+                  ? "Reject Order"
+                  : actionType === "complaintresponse"
+                    ? "Respond to Complaint"
+                    : "Mark Order Status"}
               </h3>
               <button 
                 onClick={() => setActionModalOpen(false)}
@@ -738,7 +755,7 @@ export default function OrdersPage() {
             </div>
 
             {/* Sub-status Selection mapping logic */}
-            {(actionType === "cancel" || actionType === "notdelivered") && (
+            {(actionType === "cancel" || actionType === "outcome" || actionType === "complaintresponse") && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Select Primary Reason</label>
                 <select 
@@ -746,10 +763,9 @@ export default function OrdersPage() {
                   onChange={(e) => setSubStatus(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#2f54eb]"
                 >
-                  {actionType === "cancel" 
-                    ? CANCEL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)
-                    : NOT_DELIVERED_REASONS.map((r) => <option key={r} value={r}>{r}</option>)
-                  }
+                  {(actionType === "cancel" ? CANCEL_REASONS : OUTCOME_OPTIONS).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
                 </select>
               </div>
             )}
@@ -770,10 +786,13 @@ export default function OrdersPage() {
             <button
               disabled={submittingAction}
               onClick={() => {
-                let statusString = "Cancelled";
-                if (actionType === "notdelivered") statusString = "Not Delivered";
-                if (actionType === "baddelivery") statusString = "Bad Delivery";
-                handleUpdateStatus(selectedOrder, statusString, subStatus, remarks);
+                const action =
+                  actionType === "cancel"
+                    ? "reject"
+                    : actionType === "complaintresponse"
+                      ? "complaintresponse"
+                      : "outcome";
+                handleUpdateStatus(selectedOrder, action, subStatus, remarks);
               }}
               className="w-full bg-gray-900 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-[0.99] transition mt-2 disabled:bg-gray-400"
             >

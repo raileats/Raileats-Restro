@@ -985,8 +985,8 @@ export default function OrdersPage() {
 
               <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(340px,1fr)] gap-3 sm:gap-4 items-start">
-                  <div className="min-w-0 space-y-3 sm:space-y-4">
-                    <section className="border border-gray-200 rounded-2xl overflow-hidden">
+                  {/* Mobile: Journey -> Payment -> Menu | Desktop: Journey + Menu left, Payment right */}
+                  <section className="order-1 min-w-0 border border-gray-200 rounded-2xl overflow-hidden lg:col-start-1 lg:row-start-1">
                     <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">🚆 Journey & Customer Details</div>
                     <div className="p-3 sm:p-4 grid grid-cols-2 gap-x-3 sm:gap-x-5 gap-y-4 text-xs">
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Customer Name</p><p className="mt-1 font-bold text-gray-900 break-words">{detailedOrder.CustomerName || "N/A"}</p></div>
@@ -1001,32 +1001,7 @@ export default function OrdersPage() {
                     </div>
                   </section>
 
-
-                    <section className="border border-gray-200 rounded-2xl overflow-hidden">
-                  <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">▣ Menu Items ({menuItems.length})</div>
-                  {menuItems.length === 0 ? (
-                    <div className="p-6 text-center text-xs font-bold text-gray-400">Menu item details are not available for this order.</div>
-                  ) : (
-                    <div className="divide-y divide-gray-100">
-                      {menuItems.map((item, index) => (
-                        <div key={`${item.name}-${index}`} className="p-3 sm:p-4 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-                          <div className="min-w-0">
-                            <p className="font-black text-xs text-gray-900">{item.name}</p>
-                            <p className="text-[10px] text-gray-500 mt-1">{item.description || "No item description available"}</p>
-                            <p className="text-[10px] text-gray-400 mt-1">Type: {item.type}</p>
-                          </div>
-                          <div className="text-right text-[11px] min-w-[100px]">
-                            <p className="text-gray-500">{money(item.unitPrice)} × <strong className="text-[#2f54eb]">{item.quantity}</strong></p>
-                            <p className="font-black text-gray-900 mt-1">{money(item.lineTotal)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-                  </div>
-
-                  <section className="border border-gray-200 rounded-2xl overflow-hidden">
+                  <section className="order-2 min-w-0 border border-gray-200 rounded-2xl overflow-hidden lg:col-start-2 lg:row-start-1 lg:row-span-2">
                     <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-[#2f54eb] uppercase tracking-wide">🛡 Payment Details</div>
                     <div className="p-4">
                       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 grid grid-cols-2 gap-3 mb-3">
@@ -1049,6 +1024,29 @@ export default function OrdersPage() {
                         <span className="text-xs font-black leading-tight">Amount to Collect</span><strong className="text-xl sm:text-2xl font-black whitespace-nowrap">{money(collectAmount)}</strong>
                       </div>
                     </div>
+                  </section>
+
+                  <section className="order-3 min-w-0 border border-gray-200 rounded-2xl overflow-hidden lg:col-start-1 lg:row-start-2">
+                    <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">▣ Menu Items ({menuItems.length})</div>
+                    {menuItems.length === 0 ? (
+                      <div className="p-6 text-center text-xs font-bold text-gray-400">Menu item details are not available for this order.</div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {menuItems.map((item, index) => (
+                          <div key={`${item.name}-${index}`} className="p-3 sm:p-4 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                            <div className="min-w-0">
+                              <p className="font-black text-xs text-gray-900">{item.name}</p>
+                              <p className="text-[10px] text-gray-500 mt-1">{item.description || "No item description available"}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">Type: {item.type}</p>
+                            </div>
+                            <div className="text-right text-[11px] min-w-[100px]">
+                              <p className="text-gray-500">{money(item.unitPrice)} × <strong className="text-[#2f54eb]">{item.quantity}</strong></p>
+                              <p className="font-black text-gray-900 mt-1">{money(item.lineTotal)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </section>
                 </div>
 

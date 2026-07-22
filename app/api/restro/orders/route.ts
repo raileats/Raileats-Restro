@@ -648,6 +648,383 @@ function isActionAllowed(
 }
 
 /* =========================================================
+   ORDER ITEMS HELPERS
+========================================================= */
+
+function getOrderIdFromRow(row: any) {
+  return cleanText(
+    row?.OrderId ??
+      row?.orderId ??
+      row?.order_id ??
+      row?.OrderID,
+  );
+}
+
+function getItemCodeFromRow(row: any) {
+  return cleanText(
+    row?.ItemCode ??
+      row?.itemCode ??
+      row?.item_code ??
+      row?.MenuItemCode,
+  );
+}
+
+function getItemNameFromRow(row: any) {
+  return (
+    cleanText(
+      row?.ItemName ??
+        row?.itemName ??
+        row?.item_name ??
+        row?.Name ??
+        row?.name,
+    ) || "Menu Item"
+  );
+}
+
+function getItemDescriptionFromRow(row: any) {
+  return cleanText(
+    row?.ItemDescription ??
+      row?.itemDescription ??
+      row?.item_description ??
+      row?.Description ??
+      row?.description,
+  );
+}
+
+function getItemQuantityFromRow(row: any) {
+  const value =
+    row?.Quantity ??
+    row?.quantity ??
+    row?.Qty ??
+    row?.qty ??
+    row?.ItemQty ??
+    row?.item_qty ??
+    1;
+
+  const quantity = Number(value);
+
+  return Number.isFinite(quantity) && quantity > 0
+    ? quantity
+    : 1;
+}
+
+function getItemUnitPriceFromRow(row: any) {
+  const value =
+    row?.UnitPrice ??
+    row?.unitPrice ??
+    row?.unit_price ??
+    row?.Price ??
+    row?.price ??
+    row?.SellingPrice ??
+    row?.sellingPrice ??
+    row?.selling_price ??
+    row?.ItemPrice ??
+    row?.item_price ??
+    0;
+
+  const price = Number(value);
+
+  return Number.isFinite(price)
+    ? price
+    : 0;
+}
+
+function getItemLineTotalFromRow(row: any) {
+  const directValue =
+    row?.LineTotal ??
+    row?.lineTotal ??
+    row?.line_total ??
+    row?.TotalPrice ??
+    row?.totalPrice ??
+    row?.total_price ??
+    row?.ItemTotal ??
+    row?.item_total ??
+    row?.TotalAmount ??
+    row?.totalAmount;
+
+  const directTotal = Number(directValue);
+
+  if (Number.isFinite(directTotal)) {
+    return directTotal;
+  }
+
+  return (
+    getItemQuantityFromRow(row) *
+    getItemUnitPriceFromRow(row)
+  );
+}
+
+function normalizeOrderItem(
+  row: any,
+  menuRow?: any,
+) {
+  const description =
+    getItemDescriptionFromRow(row) ||
+    getItemDescriptionFromRow(menuRow);
+
+  const itemName =
+    getItemNameFromRow(row) ||
+    getItemNameFromRow(menuRow);
+
+  const quantity =
+    getItemQuantityFromRow(row);
+
+  const unitPrice =
+    getItemUnitPriceFromRow(row);
+
+  const lineTotal =
+    getItemLineTotalFromRow(row);
+
+  /*
+   * Original DB columns preserve kiye gaye hain aur saath me common
+   * aliases attach kiye gaye hain. Isse current frontend aur future
+   * frontend dono bina kisi breaking change ke items read kar sakte hain.
+   */
+  return {
+    ...row,
+
+    OrderId:
+      getOrderIdFromRow(row),
+
+    ItemCode:
+      getItemCodeFromRow(row) ||
+      getItemCodeFromRow(menuRow),
+
+    ItemName:
+      itemName,
+
+    ItemDescription:
+      description,
+
+    Quantity:
+      quantity,
+
+    UnitPrice:
+      unitPrice,
+
+    LineTotal:
+      lineTotal,
+
+    TotalPrice:
+      lineTotal,
+
+    MenuType:
+      cleanText(
+        row?.MenuType ??
+          row?.menuType ??
+          row?.menu_type ??
+          menuRow?.MenuType ??
+          menuRow?.menuType ??
+          menuRow?.menu_type,
+      ),
+
+    ItemCategory:
+      cleanText(
+        row?.ItemCategory ??
+          row?.itemCategory ??
+          row?.item_category ??
+          menuRow?.ItemCategory ??
+          menuRow?.itemCategory ??
+          menuRow?.item_category,
+      ),
+  };
+}
+
+function chunkArray<T>(
+  values: T[],
+  size = 200,
+) {
+  const chunks: T[][] = [];
+
+  for (
+    let index = 0;
+    index < values.length;
+    index += size
+  ) {
+    chunks.push(
+      values.slice(
+        index,
+        index + size,
+      ),
+    );
+  }
+
+  return chunks;
+}
+
+async function getOrderItemsForOrders({
+  supabase,
+  orders,
+  restroCode,
+}: {
+  supabase: any;
+  orders: any[];
+  restroCode: number;
+}) {
+  const orderIds = Array.from(
+    new Set(
+      orders
+        .map((order) =>
+          cleanText(order?.OrderId),
+        )
+        .filter(
+          (value): value is string =>
+            Boolean(value),
+        ),
+    ),
+  );
+
+  if (orderIds.length === 0) {
+    return new Map<string, any[]>();
+  }
+
+  const rawItems: any[] = [];
+
+  /*
+   * Supabase/PostgREST query length safe rakhne ke liye Order IDs chunks
+   * me fetch kiye ja rahe hain.
+   */
+  for (
+    const orderIdChunk of chunkArray(
+      orderIds,
+      200,
+    )
+  ) {
+    const {
+      data: itemRows,
+      error: itemError,
+    } =
+      await supabase
+        .from("OrderItems")
+        .select("*")
+        .in(
+          "OrderId",
+          orderIdChunk,
+        );
+
+    if (itemError) {
+      throw itemError;
+    }
+
+    rawItems.push(
+      ...(itemRows || []),
+    );
+  }
+
+  /*
+   * OrderItems me description blank ho sakti hai. Available ItemCode ke
+   * basis par RestroMenuItems se description/category/menu type enrich
+   * karte hain. Agar table lookup fail ho to orders API ko fail nahi
+   * karenge; original OrderItems fir bhi return honge.
+   */
+  const itemCodes = Array.from(
+    new Set(
+      rawItems
+        .map(getItemCodeFromRow)
+        .filter(
+          (value): value is string =>
+            Boolean(value),
+        ),
+    ),
+  );
+
+  const menuByCode =
+    new Map<string, any>();
+
+  if (itemCodes.length > 0) {
+    try {
+      for (
+        const itemCodeChunk of chunkArray(
+          itemCodes,
+          200,
+        )
+      ) {
+        const {
+          data: menuRows,
+          error: menuError,
+        } =
+          await supabase
+            .from("RestroMenuItems")
+            .select("*")
+            .eq(
+              "restro_code",
+              String(restroCode),
+            )
+            .in(
+              "item_code",
+              itemCodeChunk,
+            );
+
+        if (menuError) {
+          console.warn(
+            "RESTRO MENU ITEM ENRICHMENT SKIPPED",
+            menuError,
+          );
+          break;
+        }
+
+        for (
+          const menuRow of menuRows || []
+        ) {
+          const code =
+            getItemCodeFromRow(menuRow);
+
+          if (code) {
+            menuByCode.set(
+              code,
+              menuRow,
+            );
+          }
+        }
+      }
+    } catch (menuLookupError) {
+      console.warn(
+        "RESTRO MENU ITEM ENRICHMENT ERROR",
+        menuLookupError,
+      );
+    }
+  }
+
+  const itemsByOrderId =
+    new Map<string, any[]>();
+
+  for (const rawItem of rawItems) {
+    const orderId =
+      getOrderIdFromRow(rawItem);
+
+    if (!orderId) {
+      continue;
+    }
+
+    const itemCode =
+      getItemCodeFromRow(rawItem);
+
+    const normalizedItem =
+      normalizeOrderItem(
+        rawItem,
+        itemCode
+          ? menuByCode.get(itemCode)
+          : null,
+      );
+
+    const currentItems =
+      itemsByOrderId.get(orderId) ||
+      [];
+
+    currentItems.push(
+      normalizedItem,
+    );
+
+    itemsByOrderId.set(
+      orderId,
+      currentItems,
+    );
+  }
+
+  return itemsByOrderId;
+}
+
+/* =========================================================
    GET: RESTAURANT ORDERS
 ========================================================= */
 
@@ -709,8 +1086,63 @@ export async function GET() {
       throw error;
     }
 
-    const orders =
+    const baseOrders =
       data || [];
+
+    const itemsByOrderId =
+      await getOrderItemsForOrders({
+        supabase,
+        orders: baseOrders,
+        restroCode,
+      });
+
+    const orders =
+      baseOrders.map((order) => {
+        const orderId =
+          cleanText(order?.OrderId);
+
+        const menuItems =
+          (
+            orderId
+              ? itemsByOrderId.get(
+                  orderId,
+                )
+              : null
+          ) || [];
+
+        /*
+         * MenuItems aur OrderItems dono aliases diye gaye hain taaki current
+         * page.tsx jis naam se array read kare, items correctly show hon.
+         */
+        return {
+          ...order,
+
+          MenuItems:
+            menuItems,
+
+          OrderItems:
+            menuItems,
+
+          items:
+            menuItems,
+
+          MenuItemCount:
+            menuItems.length,
+
+          TotalItemQuantity:
+            menuItems.reduce(
+              (
+                total: number,
+                item: any,
+              ) =>
+                total +
+                getItemQuantityFromRow(
+                  item,
+                ),
+              0,
+            ),
+        };
+      });
 
     const firstOrder =
       orders[0] || null;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -948,7 +949,7 @@ export default function OrdersPage() {
       )}
 
       {/* DETAILED VENDOR ORDER MODAL */}
-      {detailsModalOpen && detailedOrder && (() => {
+      {detailsModalOpen && detailedOrder && typeof document !== "undefined" && createPortal((() => {
         const menuItems = getOrderItems(detailedOrder).map(getItemSnapshot);
         const onlinePayment = isOnlinePayment(detailedOrder);
         const paymentMode = String(firstValue(detailedOrder, ["PaymentMode", "paymentMode", "payment_mode"], "COD"));
@@ -965,9 +966,9 @@ export default function OrdersPage() {
         const currentStatus = String(detailedOrder.Status || "").toLowerCase().trim();
 
         return (
-          <div className="absolute inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-white w-full sm:max-w-5xl rounded-t-[28px] sm:rounded-[24px] shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
-              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-0 sm:p-4">
+            <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-6xl rounded-none sm:rounded-[24px] shadow-2xl overflow-hidden flex flex-col">
+              <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-lg font-black text-gray-900">Order Details</h3>
@@ -982,11 +983,11 @@ export default function OrdersPage() {
                 <button onClick={closeDetailsModal} className="w-9 h-9 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-sm font-black text-gray-500 flex-shrink-0">✕</button>
               </div>
 
-              <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(340px,1fr)] gap-3 sm:gap-4">
                   <section className="border border-gray-200 rounded-2xl overflow-hidden">
                     <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">🚆 Journey & Customer Details</div>
-                    <div className="p-4 grid grid-cols-2 gap-x-5 gap-y-4 text-xs">
+                    <div className="p-3 sm:p-4 grid grid-cols-2 gap-x-3 sm:gap-x-5 gap-y-4 text-xs">
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Customer Name</p><p className="mt-1 font-bold text-gray-900 break-words">{detailedOrder.CustomerName || "N/A"}</p></div>
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Customer Mobile</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.CustomerMobile || "N/A"}</p></div>
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Train Number</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.TrainNumber || "N/A"}</p></div>
@@ -1002,7 +1003,7 @@ export default function OrdersPage() {
                   <section className="border border-gray-200 rounded-2xl overflow-hidden">
                     <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-[#2f54eb] uppercase tracking-wide">🛡 Payment Details</div>
                     <div className="p-4">
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex justify-between items-center gap-3 mb-3">
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 grid grid-cols-2 gap-3 mb-3">
                         <div><p className="text-[9px] text-gray-400 font-black uppercase">Payment Mode</p><span className="inline-block mt-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-black">{paymentMode}</span></div>
                         <div className="text-right"><p className="text-[9px] text-gray-400 font-black uppercase">Payment Status</p><p className={`mt-1 text-[11px] font-black ${onlinePayment ? "text-green-700" : "text-orange-600"}`}>{onlinePayment ? "Paid / Online" : "Collect on Delivery"}</p></div>
                       </div>
@@ -1018,8 +1019,8 @@ export default function OrdersPage() {
                           <div key={label} className="flex justify-between gap-3 py-2 border-b border-dashed border-gray-200"><span className="text-gray-500">{label}</span><strong className="text-gray-900 text-right">{value}</strong></div>
                         ))}
                       </div>
-                      <div className="mt-3 bg-[#2f54eb] text-white rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                        <span className="text-xs font-black">Amount to Collect</span><strong className="text-2xl font-black">{money(collectAmount)}</strong>
+                      <div className="mt-3 bg-[#2f54eb] text-white rounded-xl px-4 py-3 flex items-center justify-between gap-3 min-w-0">
+                        <span className="text-xs font-black leading-tight">Amount to Collect</span><strong className="text-xl sm:text-2xl font-black whitespace-nowrap">{money(collectAmount)}</strong>
                       </div>
                     </div>
                   </section>
@@ -1032,7 +1033,7 @@ export default function OrdersPage() {
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {menuItems.map((item, index) => (
-                        <div key={`${item.name}-${index}`} className="p-4 grid grid-cols-[1fr_auto] gap-3">
+                        <div key={`${item.name}-${index}`} className="p-3 sm:p-4 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                           <div className="min-w-0">
                             <p className="font-black text-xs text-gray-900">{item.name}</p>
                             <p className="text-[10px] text-gray-500 mt-1">{item.description || "No item description available"}</p>
@@ -1049,8 +1050,8 @@ export default function OrdersPage() {
                 </section>
               </div>
 
-              <div className="border-t border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center justify-end gap-2">
-                <button onClick={() => printOrder(detailedOrder)} className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-xs font-black">🖨 Print Order</button>
+              <div className="border-t border-gray-200 bg-white px-3 sm:px-4 py-3 grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end gap-2 flex-shrink-0">
+                <button onClick={() => printOrder(detailedOrder)} className="bg-gray-900 text-white px-3 sm:px-4 py-2.5 rounded-xl text-xs font-black">🖨 Print Order</button>
                 {(currentStatus === "new order" || currentStatus === "neworder" || currentStatus === "booked" || currentStatus === "in verification") && (
                   <>
                     <button disabled={submittingAction} onClick={() => handleUpdateStatus(detailedOrder, "accept")} className="bg-green-600 text-white px-4 py-2.5 rounded-xl text-xs font-black disabled:bg-gray-400">{submittingAction ? "Processing..." : "Accept Order"}</button>
@@ -1074,7 +1075,7 @@ export default function OrdersPage() {
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
     </div>
   );

@@ -116,8 +116,6 @@ async function getRestroActorName({
   order: any;
   restroCode: number;
 }) {
-  const sessionName = getRestroUserName(session, order);
-
   const { data: restroRow, error } = await supabase
     .from("RestroMaster")
     .select("*")
@@ -142,7 +140,6 @@ async function getRestroActorName({
     cleanText(restroRow?.UserName) ||
     cleanText(restroRow?.OwnerName) ||
     cleanText(restroRow?.RestroName) ||
-    cleanText(sessionName) ||
     cleanText(order?.RestroName) ||
     `Restro ${restroCode}`
   );
@@ -165,6 +162,34 @@ function getOrderCreatedAt(order: any) {
     cleanText(order?.createdAt) ||
     new Date().toISOString()
   );
+}
+
+function getActionDateTime(actionAt: string) {
+  const date = new Date(actionAt);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid action timestamp: ${actionAt}`);
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    time: `${values.hour}:${values.minute}:${values.second}`,
+  };
 }
 
 /* =========================================================
@@ -263,73 +288,73 @@ function normalizeRestroAction(
 
 type JourneyColumns = {
   update: string;
-  status: string;
-  subStatus: string;
   remarks: string;
   userType: string;
   userName: string;
   source: string;
+  actionAtDate: string;
+  actionAtTime: string;
 };
 
 const JOURNEY_COLUMNS: Record<string, JourneyColumns> = {
   booked: {
     update: "BookedUpdate",
-    status: "BookedStatus",
-    subStatus: "BookedSubStatus",
     remarks: "BookedRemarks",
     userType: "BookedUserType",
     userName: "BookedUserName",
     source: "BookedSource",
+    actionAtDate: "BookedActionAtDate",
+    actionAtTime: "BookedActionAtTime",
   },
 
   inkitchen: {
     update: "InKitchenUpdate",
-    status: "InKitchenStatus",
-    subStatus: "InKitchenSubStatus",
     remarks: "InKitchenRemarks",
     userType: "InKitchenUserType",
     userName: "InKitchenUserName",
     source: "InKitchenSource",
+    actionAtDate: "InKitchenActionAtDate",
+    actionAtTime: "InKitchenActionAtTime",
   },
 
   outfordelivery: {
     update: "OutForDeliveryUpdate",
-    status: "OutForDeliveryStatus",
-    subStatus: "OutForDeliverySubStatus",
     remarks: "OutForDeliveryRemarks",
     userType: "OutForDeliveryUserType",
     userName: "OutForDeliveryUserName",
     source: "OutForDeliverySource",
+    actionAtDate: "OutForDeliveryActionAtDate",
+    actionAtTime: "OutForDeliveryActionAtTime",
   },
 
   restromarkeddelivered: {
     update: "RestroMarkedDeliveredUpdate",
-    status: "RestroMarkedDeliveredStatus",
-    subStatus: "RestroMarkedDeliveredSubStatus",
     remarks: "RestroMarkedDeliveredRemarks",
     userType: "RestroMarkedDeliveredUserType",
     userName: "RestroMarkedDeliveredUserName",
     source: "RestroMarkedDeliveredSource",
+    actionAtDate: "RestroMarkedDeliveredActionAtDate",
+    actionAtTime: "RestroMarkedDeliveredActionAtTime",
   },
 
   cancelled: {
     update: "CancelledUpdate",
-    status: "CancelledStatus",
-    subStatus: "CancelledSubStatus",
     remarks: "CancelledRemarks",
     userType: "CancelledUserType",
     userName: "CancelledUserName",
     source: "CancelledSource",
+    actionAtDate: "CancelledActionAtDate",
+    actionAtTime: "CancelledActionAtTime",
   },
 
   complaints: {
     update: "ComplaintsUpdate",
-    status: "ComplaintsStatus",
-    subStatus: "ComplaintsSubStatus",
     remarks: "ComplaintsRemarks",
     userType: "ComplaintsUserType",
     userName: "ComplaintsUserName",
     source: "ComplaintsSource",
+    actionAtDate: "ComplaintsActionAtDate",
+    actionAtTime: "ComplaintsActionAtTime",
   },
 };
 
@@ -402,6 +427,8 @@ async function upsertOrderJourneyStage({
     throw findError;
   }
 
+  const actionDateTime = getActionDateTime(actionAt);
+
   const masterPayload: Record<string, any> = {
     OrderId: orderId,
 
@@ -418,38 +445,20 @@ async function upsertOrderJourneyStage({
     StationName:
       cleanText(order?.StationName),
 
+    Status:
+      status,
+
+    SubStatus:
+      subStatus,
+
+    Remarks:
+      remarks,
+
     DeliveryDate:
       cleanText(order?.DeliveryDate),
 
     DeliveryTime:
       cleanText(order?.DeliveryTime),
-
-    CurrentStage:
-      stage,
-
-    CurrentStatus:
-      status,
-
-    CurrentSubStatus:
-      subStatus,
-
-    LastRemarks:
-      remarks,
-
-    LastUserType:
-      userType,
-
-    LastUserName:
-      userName,
-
-    LastSource:
-      source,
-
-    LastUpdate:
-      actionAt,
-
-    UpdatedAt:
-      actionAt,
   };
 
   const stageAlreadyCaptured =
@@ -464,12 +473,6 @@ async function upsertOrderJourneyStage({
     masterPayload[columns.update] =
       actionAt;
 
-    masterPayload[columns.status] =
-      status;
-
-    masterPayload[columns.subStatus] =
-      subStatus;
-
     masterPayload[columns.remarks] =
       remarks;
 
@@ -481,6 +484,12 @@ async function upsertOrderJourneyStage({
 
     masterPayload[columns.source] =
       source;
+
+    masterPayload[columns.actionAtDate] =
+      actionDateTime.date;
+
+    masterPayload[columns.actionAtTime] =
+      actionDateTime.time;
   }
 
   if (existingJourney) {

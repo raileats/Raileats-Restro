@@ -679,16 +679,12 @@ export async function GET() {
 
           StationCode:
             cleanText(
-              session?.stationCode ??
-                session?.StationCode ??
-                firstOrder?.StationCode,
+              firstOrder?.StationCode,
             ),
 
           StationName:
             cleanText(
-              session?.stationName ??
-                session?.StationName ??
-                firstOrder?.StationName,
+              firstOrder?.StationName,
             ),
         },
       },

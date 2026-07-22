@@ -300,16 +300,44 @@ export default function OrdersPage() {
 
       setRestro(restroData);
 
-      // FETCH ORDERS (Filtering based on RestroCode from Supabase)
-      const { data, error } = await supabase
-        .from("Orders")
-        .select("*")
-        .eq("RestroCode", restroData.RestroCode)
-        .order("CreatedAt", { ascending: false });
+      // Secure server API se restaurant ke orders load honge.
+      // RestroCode client se trust nahi kiya jayega; server session se resolve karega.
+      const response = await fetch("/api/restro/orders", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-      if (error) throw error;
+      const result = await response.json().catch(() => ({}));
 
-      setOrders(data || []);
+      if (!response.ok || !result?.ok) {
+        if (response.status === 401) {
+          router.push("/");
+          return;
+        }
+
+        throw new Error(result?.error || "Unable to load orders");
+      }
+
+      setOrders(Array.isArray(result.orders) ? result.orders : []);
+
+      // Server session ki fresh restaurant identity local UI me merge karte hain.
+      if (result?.restro) {
+        const mergedRestro = {
+          ...restroData,
+          ...result.restro,
+        };
+
+        setRestro(mergedRestro);
+
+        try {
+          window.localStorage.setItem("restro", JSON.stringify(mergedRestro));
+        } catch (storageError) {
+          console.log("RESTRO STORAGE UPDATE SKIPPED", storageError);
+        }
+      }
 
       setLoading(false);
     } catch (err) {
@@ -329,7 +357,7 @@ export default function OrdersPage() {
     try {
       setSubmittingAction(true);
 
-      const response = await fetch("/api/restro/orders/status", {
+      const response = await fetch("/api/restro/orders", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

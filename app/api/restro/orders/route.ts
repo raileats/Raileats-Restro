@@ -105,6 +105,49 @@ function getRestroUserName(
   );
 }
 
+async function getRestroActorName({
+  supabase,
+  session,
+  order,
+  restroCode,
+}: {
+  supabase: any;
+  session: any;
+  order: any;
+  restroCode: number;
+}) {
+  const sessionName = getRestroUserName(session, order);
+
+  const { data: restroRow, error } = await supabase
+    .from("RestroMaster")
+    .select("*")
+    .eq("RestroCode", restroCode)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("RESTRO ACTOR NAME LOOKUP ERROR", error);
+  }
+
+  return (
+    cleanText(session?.restroUserName) ||
+    cleanText(session?.RestroUserName) ||
+    cleanText(session?.userName) ||
+    cleanText(session?.UserName) ||
+    cleanText(session?.username) ||
+    cleanText(session?.Username) ||
+    cleanText(session?.name) ||
+    cleanText(session?.Name) ||
+    cleanText(restroRow?.RestroUserName) ||
+    cleanText(restroRow?.RestroUsername) ||
+    cleanText(restroRow?.UserName) ||
+    cleanText(restroRow?.OwnerName) ||
+    cleanText(restroRow?.RestroName) ||
+    cleanText(sessionName) ||
+    cleanText(order?.RestroName) ||
+    `Restro ${restroCode}`
+  );
+}
+
 function getBookingSource(order: any) {
   return (
     cleanText(order?.BookingSource) ||
@@ -719,7 +762,7 @@ export async function GET() {
    PATCH: RESTAURANT STATUS UPDATE
 ========================================================= */
 
-export async function PATCH(
+async function handleRestroStatusUpdate(
   req: NextRequest,
 ) {
   try {
@@ -888,10 +931,12 @@ export async function PATCH(
       ACTION_MAP[action];
 
     const restroUserName =
-      getRestroUserName(
+      await getRestroActorName({
+        supabase,
         session,
         order,
-      );
+        restroCode,
+      });
 
     const remarks =
       suppliedRemarks ||
@@ -1039,3 +1084,15 @@ export async function PATCH(
     );
   }
 }
+
+export async function PATCH(
+  req: NextRequest,
+) {
+  return handleRestroStatusUpdate(req);
+}
+
+export async function POST(
+  req: NextRequest,
+) {
+  return handleRestroStatusUpdate(req);
+}}

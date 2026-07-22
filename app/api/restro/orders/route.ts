@@ -918,6 +918,41 @@ async function handleRestroStatusUpdate(
       );
     }
 
+    /*
+     * HARD LOCK:
+     * Agar order RestroRDS me already mark ho chuka hai to Restaurant panel
+     * se us order ka koi bhi status/action dobara change nahi hoga.
+     */
+    const {
+      data: existingRdsRow,
+      error: rdsLockError,
+    } = await supabase
+      .from("RestroRDS")
+      .select("RDSId, OrderId, Status, SubStatus")
+      .eq("OrderId", orderId)
+      .maybeSingle();
+
+    if (rdsLockError) {
+      throw rdsLockError;
+    }
+
+    if (existingRdsRow) {
+      return NextResponse.json(
+        {
+          ok: false,
+          locked: true,
+          error:
+            "Unable to change order. Order already marked in RestroRDS.",
+          orderId,
+          rdsId:
+            existingRdsRow.RDSId,
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
     if (
       !isActionAllowed(
         order.Status,
@@ -983,6 +1018,30 @@ async function handleRestroStatusUpdate(
       UpdatedAt:
         changedAt,
     };
+
+    /*
+     * Restaurant ke Delivered action par Orders table me dedicated
+     * RestroMarked* audit columns bhi fill honge.
+     */
+    if (action === "delivered") {
+      orderUpdatePayload.RestroMarkedDeliveredAt =
+        changedAt;
+
+      orderUpdatePayload.RestroMarkedStatus =
+        actionDefinition.status;
+
+      orderUpdatePayload.RestroMarkedSubStatus =
+        subStatus;
+
+      orderUpdatePayload.RestroMarkedRemarks =
+        remarks;
+
+      orderUpdatePayload.RestroMarkedBy =
+        restroUserName;
+
+      orderUpdatePayload.RestroMarkedAt =
+        changedAt;
+    }
 
     const {
       data: updatedOrder,
@@ -1073,6 +1132,38 @@ async function handleRestroStatusUpdate(
       journey:
         journey ??
         null,
+
+      restroMarkedDelivered:
+        action === "delivered",
+
+      restroMarkedAudit:
+        action === "delivered"
+          ? {
+              RestroMarkedDeliveredAt:
+                updatedOrder?.RestroMarkedDeliveredAt ??
+                changedAt,
+
+              RestroMarkedStatus:
+                updatedOrder?.RestroMarkedStatus ??
+                actionDefinition.status,
+
+              RestroMarkedSubStatus:
+                updatedOrder?.RestroMarkedSubStatus ??
+                subStatus,
+
+              RestroMarkedRemarks:
+                updatedOrder?.RestroMarkedRemarks ??
+                remarks,
+
+              RestroMarkedBy:
+                updatedOrder?.RestroMarkedBy ??
+                restroUserName,
+
+              RestroMarkedAt:
+                updatedOrder?.RestroMarkedAt ??
+                changedAt,
+            }
+          : null,
     });
   } catch (error: any) {
     console.error(

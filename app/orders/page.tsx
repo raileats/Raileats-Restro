@@ -116,6 +116,59 @@ function showOrderNotification(title: string, body: string) {
   }
 }
 
+function firstValue(source: any, keys: string[], fallback: any = null) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return fallback;
+}
+
+function amount(value: any) {
+  const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function money(value: any) {
+  return `₹${amount(value).toFixed(2).replace(/\.00$/, "")}`;
+}
+
+function getOrderItems(order: any) {
+  const rows = firstValue(order, ["MenuItems", "OrderItems", "items", "Items"], []);
+  return Array.isArray(rows) ? rows : [];
+}
+
+function getItemSnapshot(item: any) {
+  const quantity = Math.max(1, amount(firstValue(item, ["Quantity", "Qty", "quantity", "qty"], 1)));
+  const unitPrice = amount(firstValue(item, ["UnitPrice", "ItemPrice", "SellingPrice", "Price", "unit_price", "item_price", "selling_price", "price"], 0));
+  const lineTotal = amount(firstValue(item, ["LineTotal", "TotalPrice", "ItemTotal", "line_total", "total_price", "item_total"], unitPrice * quantity));
+
+  return {
+    name: String(firstValue(item, ["ItemName", "MenuItemName", "item_name", "name"], "Menu Item")),
+    description: String(firstValue(item, ["ItemDescription", "Description", "item_description", "description"], "")),
+    type: String(firstValue(item, ["MenuType", "ItemType", "FoodType", "menu_type", "item_type", "food_type"], "-")),
+    quantity,
+    unitPrice,
+    lineTotal,
+  };
+}
+
+function isOnlinePayment(order: any) {
+  const mode = String(firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD")).toLowerCase();
+  return mode.includes("online") || mode.includes("prepaid") || mode === "ppd";
+}
+
+function escapePrintText(value: any) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default function OrdersPage() {
   const router = useRouter();
 
@@ -396,6 +449,70 @@ export default function OrdersPage() {
       setSubStatus(OUTCOME_OPTIONS[0]);
     }
     setActionModalOpen(true);
+  };
+
+  const closeDetailsModal = () => {
+    setDetailedOrder(null);
+    setDetailsModalOpen(false);
+  };
+
+  const openActionFromDetails = (type: typeof actionType) => {
+    if (!detailedOrder) return;
+    closeDetailsModal();
+    handleOpenActionModal(detailedOrder, type);
+  };
+
+  const printOrder = (order: any) => {
+    if (typeof window === "undefined") return;
+
+    const items = getOrderItems(order).map(getItemSnapshot);
+    const paymentMode = String(firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD"));
+    const orderTotal = amount(firstValue(order, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0));
+    const collectAmount = isOnlinePayment(order)
+      ? 0
+      : amount(firstValue(order, ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"], orderTotal));
+
+    const itemRows = items.length
+      ? items.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${escapePrintText(item.name)}</strong>${item.description ? `<br><small>${escapePrintText(item.description)}</small>` : ""}</td>
+            <td>${item.quantity}</td>
+            <td>${money(item.unitPrice)}</td>
+            <td>${money(item.lineTotal)}</td>
+          </tr>`).join("")
+      : `<tr><td colspan="5" style="text-align:center">No menu items available</td></tr>`;
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      alert("Please allow pop-ups to print this order.");
+      return;
+    }
+
+    printWindow.document.write(`<!doctype html>
+      <html><head><title>Order ${escapePrintText(order?.OrderId)}</title>
+      <style>
+        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:13px}
+        h1{font-size:22px;margin:0} h2{font-size:16px;margin:22px 0 8px}.muted{color:#666}.header{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;margin-top:18px}.row{display:flex;justify-content:space-between;border-bottom:1px dashed #ddd;padding:6px 0}.row span:first-child{color:#666}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}td:nth-child(3),td:nth-child(4),td:nth-child(5),th:nth-child(3),th:nth-child(4),th:nth-child(5){text-align:right}.total{margin-left:auto;margin-top:16px;width:320px}.grand{font-size:16px;font-weight:700;border-top:2px solid #111}.footer{text-align:center;color:#666;margin-top:28px;font-size:11px}@media print{body{margin:10mm}.no-print{display:none}}
+      </style></head><body>
+      <div class="header"><div><h1>RailEats</h1><div class="muted">Restaurant Order Slip</div></div><div style="text-align:right"><strong>${escapePrintText(order?.OrderId)}</strong><br><span class="muted">${escapePrintText(order?.Status)}</span></div></div>
+      <div class="grid">
+        <div class="row"><span>Customer</span><strong>${escapePrintText(order?.CustomerName || "N/A")}</strong></div>
+        <div class="row"><span>Mobile</span><strong>${escapePrintText(order?.CustomerMobile || "N/A")}</strong></div>
+        <div class="row"><span>Train</span><strong>${escapePrintText(order?.TrainNumber || "N/A")}</strong></div>
+        <div class="row"><span>Coach / Seat</span><strong>${escapePrintText(order?.Coach || "N/A")} / ${escapePrintText(order?.Seat || "N/A")}</strong></div>
+        <div class="row"><span>Delivery</span><strong>${escapePrintText(order?.DeliveryDate || "N/A")} ${escapePrintText(order?.DeliveryTime || "")}</strong></div>
+        <div class="row"><span>Station</span><strong>${escapePrintText(order?.StationCode || "N/A")} - ${escapePrintText(order?.StationName || "N/A")}</strong></div>
+        <div class="row"><span>Payment</span><strong>${escapePrintText(paymentMode)}</strong></div>
+        <div class="row"><span>Customer to Pay</span><strong>${money(collectAmount)}</strong></div>
+      </div>
+      <h2>Menu Items</h2>
+      <table><thead><tr><th>#</th><th>Item & Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${itemRows}</tbody></table>
+      <div class="total"><div class="row grand"><span>Order Total</span><strong>${money(orderTotal)}</strong></div></div>
+      <div class="footer">Printed from RailEats Restaurant Panel</div>
+      <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
+      </body></html>`);
+    printWindow.document.close();
   };
 
   const handleNextTabs = () => {
@@ -830,36 +947,134 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* EXPANDABLE DRILLDOWN DRAWER MODAL */}
-      {detailsModalOpen && detailedOrder && (
-        <div className="absolute inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-white w-full rounded-t-[32px] p-5 max-w-md shadow-2xl flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-base font-black text-gray-900">Order Parameters</h3>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">ID: #{detailedOrder.OrderId}</p>
-              </div>
-              <button 
-                onClick={() => { setDetailedOrder(null); setDetailsModalOpen(false); }}
-                className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      {/* DETAILED VENDOR ORDER MODAL */}
+      {detailsModalOpen && detailedOrder && (() => {
+        const menuItems = getOrderItems(detailedOrder).map(getItemSnapshot);
+        const onlinePayment = isOnlinePayment(detailedOrder);
+        const paymentMode = String(firstValue(detailedOrder, ["PaymentMode", "paymentMode", "payment_mode"], "COD"));
+        const basePrice = firstValue(detailedOrder, ["BasePrice", "Subtotal", "SubTotal", "basePrice", "subtotal"], 0);
+        const gstAmount = firstValue(detailedOrder, ["GSTAmount", "GstAmount", "GST", "gstAmount", "gst_amount"], 0);
+        const platformCharge = firstValue(detailedOrder, ["PlatformCharge", "platformCharge", "platform_charge"], 0);
+        const deliveryCharge = firstValue(detailedOrder, ["DeliveryCharge", "deliveryCharge", "delivery_charge"], 0);
+        const couponCode = firstValue(detailedOrder, ["CouponCode", "couponCode", "coupon_code"], "");
+        const couponDiscount = firstValue(detailedOrder, ["CouponDiscount", "DiscountAmount", "couponDiscount", "coupon_discount"], 0);
+        const orderTotal = firstValue(detailedOrder, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0);
+        const collectAmount = onlinePayment
+          ? 0
+          : firstValue(detailedOrder, ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"], orderTotal);
+        const currentStatus = String(detailedOrder.Status || "").toLowerCase().trim();
 
-            {/* Core Snapshot Details Block */}
-            <div className="space-y-2.5 text-xs font-semibold text-gray-700">
-              <div className="flex justify-between"><span className="text-gray-400">Status:</span><span className="font-bold text-blue-600">{detailedOrder.Status}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Customer:</span><span>{detailedOrder.CustomerName}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Mobile:</span><span>{detailedOrder.CustomerMobile || "N/A"}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Train / Coach / Seat:</span><span>{detailedOrder.TrainNumber} / {detailedOrder.Coach} / {detailedOrder.Seat}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Delivery Schedule:</span><span>{detailedOrder.DeliveryDate} ({detailedOrder.DeliveryTime})</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Total Amount:</span><span className="font-bold text-gray-900">₹{detailedOrder.TotalAmount}</span></div>
-              {detailedOrder.SubStatus && <div className="flex justify-between"><span className="text-gray-400">Reason Tag:</span><span className="text-red-500 font-bold">{detailedOrder.SubStatus}</span></div>}
+        return (
+          <div className="absolute inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white w-full sm:max-w-5xl rounded-t-[28px] sm:rounded-[24px] shadow-2xl max-h-[92vh] overflow-hidden flex flex-col">
+              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-100">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-black text-gray-900">Order Details</h3>
+                    <span className="bg-[#2f54eb] text-white rounded-md px-2 py-1 text-[10px] font-black break-all">
+                      #{detailedOrder.OrderId}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 font-semibold mt-1">
+                    Current Status: <span className="text-[#2f54eb] font-black">{detailedOrder.Status || "N/A"}</span>
+                  </p>
+                </div>
+                <button onClick={closeDetailsModal} className="w-9 h-9 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-sm font-black text-gray-500 flex-shrink-0">✕</button>
+              </div>
+
+              <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-4">
+                  <section className="border border-gray-200 rounded-2xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">🚆 Journey & Customer Details</div>
+                    <div className="p-4 grid grid-cols-2 gap-x-5 gap-y-4 text-xs">
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Customer Name</p><p className="mt-1 font-bold text-gray-900 break-words">{detailedOrder.CustomerName || "N/A"}</p></div>
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Customer Mobile</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.CustomerMobile || "N/A"}</p></div>
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Train Number</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.TrainNumber || "N/A"}</p></div>
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Coach / Seat</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.Coach || "N/A"} / {detailedOrder.Seat || "N/A"}</p></div>
+                      <div className="rounded-xl bg-blue-50 border border-blue-100 p-3"><p className="text-[10px] text-gray-500 font-black uppercase">Delivery Date</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.DeliveryDate || "N/A"}</p></div>
+                      <div className="rounded-xl bg-blue-50 border border-blue-100 p-3"><p className="text-[10px] text-gray-500 font-black uppercase">Delivery Time</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.DeliveryTime || "N/A"}</p></div>
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Station Code</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.StationCode || "N/A"}</p></div>
+                      <div><p className="text-[10px] text-gray-400 font-black uppercase">Station Name</p><p className="mt-1 font-bold text-gray-900 break-words">{detailedOrder.StationName || "N/A"}</p></div>
+                      {detailedOrder.SubStatus && <div className="col-span-2"><p className="text-[10px] text-gray-400 font-black uppercase">Reason Tag</p><p className="mt-1 font-black text-red-500">{detailedOrder.SubStatus}</p></div>}
+                    </div>
+                  </section>
+
+                  <section className="border border-gray-200 rounded-2xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-[#2f54eb] uppercase tracking-wide">🛡 Payment Details</div>
+                    <div className="p-4">
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 flex justify-between items-center gap-3 mb-3">
+                        <div><p className="text-[9px] text-gray-400 font-black uppercase">Payment Mode</p><span className="inline-block mt-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-black">{paymentMode}</span></div>
+                        <div className="text-right"><p className="text-[9px] text-gray-400 font-black uppercase">Payment Status</p><p className={`mt-1 text-[11px] font-black ${onlinePayment ? "text-green-700" : "text-orange-600"}`}>{onlinePayment ? "Paid / Online" : "Collect on Delivery"}</p></div>
+                      </div>
+                      <div className="space-y-0 text-[11px]">
+                        {[
+                          ["Base Price / Subtotal", money(basePrice)],
+                          ["GST Amount", money(gstAmount)],
+                          ["Platform Charge", money(platformCharge)],
+                          ["Delivery Charge", amount(deliveryCharge) ? money(deliveryCharge) : "N/A"],
+                          ["Coupon Code / Discount", couponCode ? `${couponCode} / ${money(couponDiscount)}` : amount(couponDiscount) ? money(couponDiscount) : "Not Applied"],
+                          ["Order Total", money(orderTotal)],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex justify-between gap-3 py-2 border-b border-dashed border-gray-200"><span className="text-gray-500">{label}</span><strong className="text-gray-900 text-right">{value}</strong></div>
+                        ))}
+                      </div>
+                      <div className="mt-3 bg-[#2f54eb] text-white rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <span className="text-xs font-black">Amount to Collect</span><strong className="text-2xl font-black">{money(collectAmount)}</strong>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <section className="border border-gray-200 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] font-black text-gray-600 uppercase tracking-wide">▣ Menu Items ({menuItems.length})</div>
+                  {menuItems.length === 0 ? (
+                    <div className="p-6 text-center text-xs font-bold text-gray-400">Menu item details are not available for this order.</div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {menuItems.map((item, index) => (
+                        <div key={`${item.name}-${index}`} className="p-4 grid grid-cols-[1fr_auto] gap-3">
+                          <div className="min-w-0">
+                            <p className="font-black text-xs text-gray-900">{item.name}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">{item.description || "No item description available"}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">Type: {item.type}</p>
+                          </div>
+                          <div className="text-right text-[11px] min-w-[100px]">
+                            <p className="text-gray-500">{money(item.unitPrice)} × <strong className="text-[#2f54eb]">{item.quantity}</strong></p>
+                            <p className="font-black text-gray-900 mt-1">{money(item.lineTotal)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              <div className="border-t border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center justify-end gap-2">
+                <button onClick={() => printOrder(detailedOrder)} className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-xs font-black">🖨 Print Order</button>
+                {(currentStatus === "new order" || currentStatus === "neworder" || currentStatus === "booked" || currentStatus === "in verification") && (
+                  <>
+                    <button disabled={submittingAction} onClick={() => handleUpdateStatus(detailedOrder, "accept")} className="bg-green-600 text-white px-4 py-2.5 rounded-xl text-xs font-black disabled:bg-gray-400">{submittingAction ? "Processing..." : "Accept Order"}</button>
+                    <button onClick={() => openActionFromDetails("cancel")} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-xs font-black">Reject</button>
+                  </>
+                )}
+                {currentStatus === "in kitchen" && (
+                  <>
+                    <button disabled={submittingAction} onClick={() => handleUpdateStatus(detailedOrder, "dispatch")} className="bg-[#2f54eb] text-white px-4 py-2.5 rounded-xl text-xs font-black disabled:bg-gray-400">Dispatch 🛵</button>
+                    <button onClick={() => openActionFromDetails("cancel")} className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-xs font-black">Cancel</button>
+                  </>
+                )}
+                {currentStatus === "out for delivery" && (
+                  <>
+                    <button disabled={submittingAction} onClick={() => handleUpdateStatus(detailedOrder, "delivered")} className="bg-green-600 text-white px-4 py-2.5 rounded-xl text-xs font-black disabled:bg-gray-400">Delivered ✅</button>
+                    <button onClick={() => openActionFromDetails("outcome")} className="bg-amber-50 text-amber-700 px-4 py-2.5 rounded-xl text-xs font-black">Mark Status</button>
+                  </>
+                )}
+                {(currentStatus === "complaints" || currentStatus === "complaint") && <button onClick={() => openActionFromDetails("complaintresponse")} className="bg-amber-50 text-amber-700 px-4 py-2.5 rounded-xl text-xs font-black">Respond</button>}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

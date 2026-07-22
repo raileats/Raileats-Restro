@@ -463,57 +463,251 @@ export default function OrdersPage() {
     handleOpenActionModal(detailedOrder, type);
   };
 
-  const printOrder = (order: any) => {
+  const printOrder = async (order: any) => {
     if (typeof window === "undefined") return;
 
-    const items = getOrderItems(order).map(getItemSnapshot);
-    const paymentMode = String(firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD"));
-    const orderTotal = amount(firstValue(order, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0));
-    const collectAmount = isOnlinePayment(order)
-      ? 0
-      : amount(firstValue(order, ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"], orderTotal));
-
-    const itemRows = items.length
-      ? items.map((item, index) => `
-          <tr>
-            <td>${index + 1}</td>
-            <td><strong>${escapePrintText(item.name)}</strong>${item.description ? `<br><small>${escapePrintText(item.description)}</small>` : ""}</td>
-            <td>${item.quantity}</td>
-            <td>${money(item.unitPrice)}</td>
-            <td>${money(item.lineTotal)}</td>
-          </tr>`).join("")
-      : `<tr><td colspan="5" style="text-align:center">No menu items available</td></tr>`;
-
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow) {
-      alert("Please allow pop-ups to print this order.");
+    // Open the tab immediately so mobile browsers do not block it after await.
+    const pdfWindow = window.open("", "_blank");
+    if (!pdfWindow) {
+      alert("Please allow pop-ups to open the order PDF.");
       return;
     }
 
-    printWindow.document.write(`<!doctype html>
-      <html><head><title>Order ${escapePrintText(order?.OrderId)}</title>
-      <style>
-        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:13px}
-        h1{font-size:22px;margin:0} h2{font-size:16px;margin:22px 0 8px}.muted{color:#666}.header{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;margin-top:18px}.row{display:flex;justify-content:space-between;border-bottom:1px dashed #ddd;padding:6px 0}.row span:first-child{color:#666}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}td:nth-child(3),td:nth-child(4),td:nth-child(5),th:nth-child(3),th:nth-child(4),th:nth-child(5){text-align:right}.total{margin-left:auto;margin-top:16px;width:320px}.grand{font-size:16px;font-weight:700;border-top:2px solid #111}.footer{text-align:center;color:#666;margin-top:28px;font-size:11px}@media print{body{margin:10mm}.no-print{display:none}}
-      </style></head><body>
-      <div class="header"><div><h1>RailEats</h1><div class="muted">Restaurant Order Slip</div></div><div style="text-align:right"><strong>${escapePrintText(order?.OrderId)}</strong><br><span class="muted">${escapePrintText(order?.Status)}</span></div></div>
-      <div class="grid">
-        <div class="row"><span>Customer</span><strong>${escapePrintText(order?.CustomerName || "N/A")}</strong></div>
-        <div class="row"><span>Mobile</span><strong>${escapePrintText(order?.CustomerMobile || "N/A")}</strong></div>
-        <div class="row"><span>Train</span><strong>${escapePrintText(order?.TrainNumber || "N/A")}</strong></div>
-        <div class="row"><span>Coach / Seat</span><strong>${escapePrintText(order?.Coach || "N/A")} / ${escapePrintText(order?.Seat || "N/A")}</strong></div>
-        <div class="row"><span>Delivery</span><strong>${escapePrintText(order?.DeliveryDate || "N/A")} ${escapePrintText(order?.DeliveryTime || "")}</strong></div>
-        <div class="row"><span>Station</span><strong>${escapePrintText(order?.StationCode || "N/A")} - ${escapePrintText(order?.StationName || "N/A")}</strong></div>
-        <div class="row"><span>Payment</span><strong>${escapePrintText(paymentMode)}</strong></div>
-        <div class="row"><span>Customer to Pay</span><strong>${money(collectAmount)}</strong></div>
-      </div>
-      <h2>Menu Items</h2>
-      <table><thead><tr><th>#</th><th>Item & Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${itemRows}</tbody></table>
-      <div class="total"><div class="row grand"><span>Order Total</span><strong>${money(orderTotal)}</strong></div></div>
-      <div class="footer">Printed from RailEats Restaurant Panel</div>
-      <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
-      </body></html>`);
-    printWindow.document.close();
+    pdfWindow.document.write(`<!doctype html><html><head><title>Preparing Order PDF</title></head><body style="font-family:Arial,sans-serif;padding:24px">Preparing order PDF...</body></html>`);
+    pdfWindow.document.close();
+
+    try {
+      const { jsPDF } = await import("jspdf");
+
+      const items = getOrderItems(order).map(getItemSnapshot);
+      const paymentMode = String(
+        firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD")
+      );
+      const orderTotal = amount(
+        firstValue(order, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0)
+      );
+      const collectAmount = isOnlinePayment(order)
+        ? 0
+        : amount(
+            firstValue(
+              order,
+              ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"],
+              orderTotal
+            )
+          );
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const left = 14;
+      const right = pageWidth - 14;
+      const contentWidth = right - left;
+      let y = 16;
+
+      const safe = (value: any, fallback = "N/A") => {
+        const cleaned = String(value ?? "").trim();
+        return cleaned || fallback;
+      };
+
+      const addLabelValue = (label: string, value: any, x: number, rowY: number) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(110, 118, 130);
+        doc.text(label.toUpperCase(), x, rowY);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(20, 24, 35);
+        doc.text(safe(value), x, rowY + 5, { maxWidth: contentWidth / 2 - 8 });
+      };
+
+      const ensureSpace = (requiredHeight: number) => {
+        if (y + requiredHeight <= pageHeight - 14) return;
+        doc.addPage();
+        y = 16;
+      };
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(20, 24, 35);
+      doc.text("RailEats", left, y);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 108, 120);
+      doc.text("Restaurant Order PDF", left, y + 6);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(47, 84, 235);
+      doc.text(safe(order?.OrderId), right, y, { align: "right" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(90, 98, 110);
+      doc.text(`Status: ${safe(order?.Status)}`, right, y + 6, { align: "right" });
+
+      y += 13;
+      doc.setDrawColor(35, 40, 50);
+      doc.setLineWidth(0.5);
+      doc.line(left, y, right, y);
+      y += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 35, 45);
+      doc.text("Journey & Customer Details", left, y);
+      y += 8;
+
+      const columnGap = 8;
+      const columnWidth = (contentWidth - columnGap) / 2;
+      const rightColumnX = left + columnWidth + columnGap;
+
+      addLabelValue("Customer Name", order?.CustomerName, left, y);
+      addLabelValue("Customer Mobile", order?.CustomerMobile, rightColumnX, y);
+      y += 16;
+      addLabelValue("Train Number", order?.TrainNumber, left, y);
+      addLabelValue(
+        "Coach / Seat",
+        `${safe(order?.Coach)} / ${safe(order?.Seat)}`,
+        rightColumnX,
+        y
+      );
+      y += 16;
+      addLabelValue("Delivery Date", order?.DeliveryDate, left, y);
+      addLabelValue("Delivery Time", order?.DeliveryTime, rightColumnX, y);
+      y += 16;
+      addLabelValue("Station Code", order?.StationCode, left, y);
+      addLabelValue("Station Name", order?.StationName, rightColumnX, y);
+      y += 16;
+
+      ensureSpace(34);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 35, 45);
+      doc.text("Payment Details", left, y);
+      y += 7;
+
+      const paymentRows: Array<[string, string]> = [
+        ["Payment Mode", paymentMode],
+        ["Order Total", money(orderTotal)],
+        ["Customer to Pay", money(collectAmount)],
+      ];
+
+      paymentRows.forEach(([label, value]) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(95, 103, 115);
+        doc.text(label, left, y);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(20, 24, 35);
+        doc.text(value, right, y, { align: "right" });
+        doc.setDrawColor(220, 224, 230);
+        doc.setLineWidth(0.2);
+        doc.line(left, y + 2.5, right, y + 2.5);
+        y += 8;
+      });
+
+      y += 4;
+      ensureSpace(25);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 35, 45);
+      doc.text(`Menu Items (${items.length})`, left, y);
+      y += 8;
+
+      if (items.length === 0) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(120, 128, 140);
+        doc.text("Menu item details are not available for this order.", left, y);
+        y += 10;
+      } else {
+        items.forEach((item, index) => {
+          const description = safe(item.description, "");
+          const itemNameLines = doc.splitTextToSize(
+            `${index + 1}. ${safe(item.name, "Item")}`,
+            contentWidth - 62
+          );
+          const descriptionLines = description
+            ? doc.splitTextToSize(description, contentWidth - 62)
+            : [];
+          const rowHeight = Math.max(
+            13,
+            itemNameLines.length * 5 + descriptionLines.length * 4 + 4
+          );
+
+          ensureSpace(rowHeight + 3);
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(25, 30, 40);
+          doc.text(itemNameLines, left, y);
+
+          if (descriptionLines.length) {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(110, 118, 130);
+            doc.text(descriptionLines, left, y + itemNameLines.length * 5);
+          }
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(70, 78, 90);
+          doc.text(`${money(item.unitPrice)} x ${item.quantity}`, right - 26, y, {
+            align: "right",
+          });
+
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(20, 24, 35);
+          doc.text(money(item.lineTotal), right, y, { align: "right" });
+
+          doc.setDrawColor(225, 228, 234);
+          doc.setLineWidth(0.2);
+          doc.line(left, y + rowHeight - 2, right, y + rowHeight - 2);
+          y += rowHeight;
+        });
+      }
+
+      ensureSpace(20);
+      y += 3;
+      doc.setFillColor(47, 84, 235);
+      doc.roundedRect(left, y, contentWidth, 14, 3, 3, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Amount to Collect", left + 5, y + 9);
+      doc.setFontSize(15);
+      doc.text(money(collectAmount), right - 5, y + 9, { align: "right" });
+
+      const totalPages = doc.getNumberOfPages();
+      for (let page = 1; page <= totalPages; page += 1) {
+        doc.setPage(page);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(135, 142, 153);
+        doc.text(
+          `RailEats Restaurant Panel  |  Page ${page} of ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 7,
+          { align: "center" }
+        );
+      }
+
+      const pdfBlob = doc.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      pdfWindow.location.replace(pdfUrl);
+
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5 * 60 * 1000);
+    } catch (error) {
+      console.error("ORDER PDF GENERATION FAILED", error);
+      pdfWindow.close();
+      alert("Order PDF generate nahi ho paayi. Please try again.");
+    }
   };
 
   const handleNextTabs = () => {
@@ -997,7 +1191,12 @@ export default function OrdersPage() {
                       <div className="rounded-xl bg-blue-50 border border-blue-100 p-3"><p className="text-[10px] text-gray-500 font-black uppercase">Delivery Time</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.DeliveryTime || "N/A"}</p></div>
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Station Code</p><p className="mt-1 font-bold text-gray-900">{detailedOrder.StationCode || "N/A"}</p></div>
                       <div><p className="text-[10px] text-gray-400 font-black uppercase">Station Name</p><p className="mt-1 font-bold text-gray-900 break-words">{detailedOrder.StationName || "N/A"}</p></div>
-                      {detailedOrder.SubStatus && <div className="col-span-2"><p className="text-[10px] text-gray-400 font-black uppercase">Reason Tag</p><p className="mt-1 font-black text-red-500">{detailedOrder.SubStatus}</p></div>}
+                      {detailedOrder.SubStatus && !["delivered", "restro marked delivered", "restromarkeddelivered"].includes(String(detailedOrder.SubStatus).toLowerCase().trim()) && (
+                        <div className="col-span-2">
+                          <p className="text-[10px] text-gray-400 font-black uppercase">Reason Tag</p>
+                          <p className="mt-1 font-black text-red-500">{detailedOrder.SubStatus}</p>
+                        </div>
+                      )}
                     </div>
                   </section>
 
@@ -1053,7 +1252,7 @@ export default function OrdersPage() {
               </div>
 
               <div className="border-t border-gray-200 bg-white px-3 sm:px-4 py-3 grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end gap-2 flex-shrink-0">
-                <button onClick={() => printOrder(detailedOrder)} className="bg-gray-900 text-white px-3 sm:px-4 py-2.5 rounded-xl text-xs font-black">🖨 Print Order</button>
+                <button onClick={() => void printOrder(detailedOrder)} className="bg-gray-900 text-white px-3 sm:px-4 py-2.5 rounded-xl text-xs font-black">🖨 Print Order</button>
                 {(currentStatus === "new order" || currentStatus === "neworder" || currentStatus === "booked" || currentStatus === "in verification") && (
                   <>
                     <button disabled={submittingAction} onClick={() => handleUpdateStatus(detailedOrder, "accept")} className="bg-green-600 text-white px-4 py-2.5 rounded-xl text-xs font-black disabled:bg-gray-400">{submittingAction ? "Processing..." : "Accept Order"}</button>

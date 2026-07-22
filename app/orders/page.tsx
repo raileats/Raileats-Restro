@@ -463,251 +463,254 @@ export default function OrdersPage() {
     handleOpenActionModal(detailedOrder, type);
   };
 
-  const printOrder = async (order: any) => {
+  const printOrder = (order: any) => {
     if (typeof window === "undefined") return;
 
-    // Open the tab immediately so mobile browsers do not block it after await.
-    const pdfWindow = window.open("", "_blank");
-    if (!pdfWindow) {
-      alert("Please allow pop-ups to open the order PDF.");
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow pop-ups to open the order slip.");
       return;
     }
 
-    pdfWindow.document.write(`<!doctype html><html><head><title>Preparing Order PDF</title></head><body style="font-family:Arial,sans-serif;padding:24px">Preparing order PDF...</body></html>`);
-    pdfWindow.document.close();
+    const escapeHtml = (value: any) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
-    try {
-      const { jsPDF } = await import("jspdf");
+    const safeText = (value: any, fallback = "N/A") => {
+      const cleaned = String(value ?? "").trim();
+      return escapeHtml(cleaned || fallback);
+    };
 
-      const items = getOrderItems(order).map(getItemSnapshot);
-      const paymentMode = String(
-        firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD")
-      );
-      const orderTotal = amount(
-        firstValue(order, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0)
-      );
-      const collectAmount = isOnlinePayment(order)
-        ? 0
-        : amount(
-            firstValue(
-              order,
-              ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"],
-              orderTotal
-            )
-          );
-
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const left = 14;
-      const right = pageWidth - 14;
-      const contentWidth = right - left;
-      let y = 16;
-
-      const safe = (value: any, fallback = "N/A") => {
-        const cleaned = String(value ?? "").trim();
-        return cleaned || fallback;
-      };
-
-      const addLabelValue = (label: string, value: any, x: number, rowY: number) => {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(110, 118, 130);
-        doc.text(label.toUpperCase(), x, rowY);
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(20, 24, 35);
-        doc.text(safe(value), x, rowY + 5, { maxWidth: contentWidth / 2 - 8 });
-      };
-
-      const ensureSpace = (requiredHeight: number) => {
-        if (y + requiredHeight <= pageHeight - 14) return;
-        doc.addPage();
-        y = 16;
-      };
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(20);
-      doc.setTextColor(20, 24, 35);
-      doc.text("RailEats", left, y);
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 108, 120);
-      doc.text("Restaurant Order PDF", left, y + 6);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(47, 84, 235);
-      doc.text(safe(order?.OrderId), right, y, { align: "right" });
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(90, 98, 110);
-      doc.text(`Status: ${safe(order?.Status)}`, right, y + 6, { align: "right" });
-
-      y += 13;
-      doc.setDrawColor(35, 40, 50);
-      doc.setLineWidth(0.5);
-      doc.line(left, y, right, y);
-      y += 10;
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(30, 35, 45);
-      doc.text("Journey & Customer Details", left, y);
-      y += 8;
-
-      const columnGap = 8;
-      const columnWidth = (contentWidth - columnGap) / 2;
-      const rightColumnX = left + columnWidth + columnGap;
-
-      addLabelValue("Customer Name", order?.CustomerName, left, y);
-      addLabelValue("Customer Mobile", order?.CustomerMobile, rightColumnX, y);
-      y += 16;
-      addLabelValue("Train Number", order?.TrainNumber, left, y);
-      addLabelValue(
-        "Coach / Seat",
-        `${safe(order?.Coach)} / ${safe(order?.Seat)}`,
-        rightColumnX,
-        y
-      );
-      y += 16;
-      addLabelValue("Delivery Date", order?.DeliveryDate, left, y);
-      addLabelValue("Delivery Time", order?.DeliveryTime, rightColumnX, y);
-      y += 16;
-      addLabelValue("Station Code", order?.StationCode, left, y);
-      addLabelValue("Station Name", order?.StationName, rightColumnX, y);
-      y += 16;
-
-      ensureSpace(34);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(30, 35, 45);
-      doc.text("Payment Details", left, y);
-      y += 7;
-
-      const paymentRows: Array<[string, string]> = [
-        ["Payment Mode", paymentMode],
-        ["Order Total", money(orderTotal)],
-        ["Customer to Pay", money(collectAmount)],
-      ];
-
-      paymentRows.forEach(([label, value]) => {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(95, 103, 115);
-        doc.text(label, left, y);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(20, 24, 35);
-        doc.text(value, right, y, { align: "right" });
-        doc.setDrawColor(220, 224, 230);
-        doc.setLineWidth(0.2);
-        doc.line(left, y + 2.5, right, y + 2.5);
-        y += 8;
-      });
-
-      y += 4;
-      ensureSpace(25);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(30, 35, 45);
-      doc.text(`Menu Items (${items.length})`, left, y);
-      y += 8;
-
-      if (items.length === 0) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(120, 128, 140);
-        doc.text("Menu item details are not available for this order.", left, y);
-        y += 10;
-      } else {
-        items.forEach((item, index) => {
-          const description = safe(item.description, "");
-          const itemNameLines = doc.splitTextToSize(
-            `${index + 1}. ${safe(item.name, "Item")}`,
-            contentWidth - 62
-          );
-          const descriptionLines = description
-            ? doc.splitTextToSize(description, contentWidth - 62)
-            : [];
-          const rowHeight = Math.max(
-            13,
-            itemNameLines.length * 5 + descriptionLines.length * 4 + 4
-          );
-
-          ensureSpace(rowHeight + 3);
-
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(9.5);
-          doc.setTextColor(25, 30, 40);
-          doc.text(itemNameLines, left, y);
-
-          if (descriptionLines.length) {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(8);
-            doc.setTextColor(110, 118, 130);
-            doc.text(descriptionLines, left, y + itemNameLines.length * 5);
-          }
-
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(70, 78, 90);
-          doc.text(`${money(item.unitPrice)} x ${item.quantity}`, right - 26, y, {
-            align: "right",
-          });
-
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(20, 24, 35);
-          doc.text(money(item.lineTotal), right, y, { align: "right" });
-
-          doc.setDrawColor(225, 228, 234);
-          doc.setLineWidth(0.2);
-          doc.line(left, y + rowHeight - 2, right, y + rowHeight - 2);
-          y += rowHeight;
-        });
-      }
-
-      ensureSpace(20);
-      y += 3;
-      doc.setFillColor(47, 84, 235);
-      doc.roundedRect(left, y, contentWidth, 14, 3, 3, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Amount to Collect", left + 5, y + 9);
-      doc.setFontSize(15);
-      doc.text(money(collectAmount), right - 5, y + 9, { align: "right" });
-
-      const totalPages = doc.getNumberOfPages();
-      for (let page = 1; page <= totalPages; page += 1) {
-        doc.setPage(page);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7.5);
-        doc.setTextColor(135, 142, 153);
-        doc.text(
-          `RailEats Restaurant Panel  |  Page ${page} of ${totalPages}`,
-          pageWidth / 2,
-          pageHeight - 7,
-          { align: "center" }
+    const items = getOrderItems(order).map(getItemSnapshot);
+    const paymentMode = String(
+      firstValue(order, ["PaymentMode", "paymentMode", "payment_mode"], "COD")
+    );
+    const orderTotal = amount(
+      firstValue(order, ["TotalAmount", "OrderTotal", "totalAmount", "total_amount"], 0)
+    );
+    const collectAmount = isOnlinePayment(order)
+      ? 0
+      : amount(
+          firstValue(
+            order,
+            ["CustomerToPay", "CODAmount", "PayableAmount", "TotalAmount"],
+            orderTotal
+          )
         );
-      }
 
-      const pdfBlob = doc.output("blob");
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      pdfWindow.location.replace(pdfUrl);
+    const itemRows = items.length
+      ? items
+          .map(
+            (item, index) => `
+              <tr>
+                <td>
+                  <div class="item-name">${index + 1}. ${safeText(item.name, "Item")}</div>
+                  ${item.description ? `<div class="item-description">${safeText(item.description, "")}</div>` : ""}
+                </td>
+                <td class="center">${safeText(item.quantity, "0")}</td>
+                <td class="right">${money(item.unitPrice)}</td>
+                <td class="right strong">${money(item.lineTotal)}</td>
+              </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="4" class="empty">Menu item details are not available for this order.</td></tr>`;
 
-      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 5 * 60 * 1000);
-    } catch (error) {
-      console.error("ORDER PDF GENERATION FAILED", error);
-      pdfWindow.close();
-      alert("Order PDF generate nahi ho paayi. Please try again.");
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RailEats Order ${safeText(order?.OrderId, "")}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef2f7;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
     }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255,255,255,.96);
+      border-bottom: 1px solid #dbe1ea;
+    }
+    .toolbar button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .print-btn { background: #111827; color: white; }
+    .close-btn { background: #e5e7eb; color: #111827; }
+    .sheet {
+      width: min(900px, calc(100% - 24px));
+      margin: 18px auto 40px;
+      background: white;
+      border: 1px solid #dbe1ea;
+      border-radius: 18px;
+      box-shadow: 0 12px 34px rgba(15, 23, 42, .12);
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px;
+      border-bottom: 2px solid #111827;
+    }
+    .brand { font-size: 28px; font-weight: 900; }
+    .sub { margin-top: 4px; color: #6b7280; font-size: 13px; }
+    .order-meta { text-align: right; }
+    .order-id { color: #2f54eb; font-weight: 900; }
+    .status { margin-top: 6px; font-size: 13px; }
+    .section { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; }
+    .section h2 { margin: 0 0 14px; font-size: 15px; }
+    .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+    .label { color: #8a94a6; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .value { margin-top: 4px; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px 0;
+      border-bottom: 1px dashed #dbe1ea;
+      font-size: 13px;
+    }
+    .payment-row:last-child { border-bottom: 0; }
+    .amount-box {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #2f54eb;
+      color: white;
+      font-weight: 900;
+      font-size: 17px;
+    }
+    .amount-box strong { font-size: 25px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      color: #64748b;
+      background: #f8fafc;
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 10px;
+      border-bottom: 1px solid #dbe1ea;
+    }
+    td { padding: 12px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    .item-name { font-weight: 800; }
+    .item-description { margin-top: 4px; color: #64748b; font-size: 11px; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .strong { font-weight: 900; }
+    .empty { text-align: center; color: #94a3b8; padding: 26px; }
+    .footer { padding: 14px 24px; color: #94a3b8; font-size: 10px; text-align: center; }
+
+    @media (max-width: 600px) {
+      .sheet { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .header { padding: 18px; flex-direction: column; }
+      .order-meta { text-align: left; }
+      .section { padding: 18px; }
+      .details-grid { grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+      .toolbar { justify-content: stretch; }
+      .toolbar button { flex: 1; }
+      th, td { padding-left: 7px; padding-right: 7px; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { background: white; }
+      .toolbar { display: none !important; }
+      .sheet {
+        width: 100%;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .section, .header, table, tr, td, th { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+    <button class="close-btn" onclick="window.close()">✕ Close</button>
+  </div>
+
+  <main class="sheet">
+    <header class="header">
+      <div>
+        <div class="brand">RailEats</div>
+        <div class="sub">Restaurant Order Slip</div>
+      </div>
+      <div class="order-meta">
+        <div class="order-id">#${safeText(order?.OrderId)}</div>
+        <div class="status">Status: <strong>${safeText(order?.Status)}</strong></div>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Journey & Customer Details</h2>
+      <div class="details-grid">
+        <div><div class="label">Customer Name</div><div class="value">${safeText(order?.CustomerName)}</div></div>
+        <div><div class="label">Customer Mobile</div><div class="value">${safeText(order?.CustomerMobile)}</div></div>
+        <div><div class="label">Train Number</div><div class="value">${safeText(order?.TrainNumber)}</div></div>
+        <div><div class="label">Coach / Seat</div><div class="value">${safeText(order?.Coach)} / ${safeText(order?.Seat)}</div></div>
+        <div><div class="label">Delivery Date</div><div class="value">${safeText(order?.DeliveryDate)}</div></div>
+        <div><div class="label">Delivery Time</div><div class="value">${safeText(order?.DeliveryTime)}</div></div>
+        <div><div class="label">Station Code</div><div class="value">${safeText(order?.StationCode)}</div></div>
+        <div><div class="label">Station Name</div><div class="value">${safeText(order?.StationName)}</div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Payment Details</h2>
+      <div class="payment-row"><span>Payment Mode</span><strong>${safeText(paymentMode)}</strong></div>
+      <div class="payment-row"><span>Order Total</span><strong>${money(orderTotal)}</strong></div>
+      <div class="amount-box"><span>Customer to Pay</span><strong>${money(collectAmount)}</strong></div>
+    </section>
+
+    <section class="section">
+      <h2>Menu Items (${items.length})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Item & Description</th>
+            <th class="center">Qty</th>
+            <th class="right">Unit Price</th>
+            <th class="right">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </section>
+
+    <footer class="footer">Generated from RailEats Restaurant Panel</footer>
+  </main>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
   };
 
   const handleNextTabs = () => {

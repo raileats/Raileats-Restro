@@ -1095,4 +1095,4 @@ export async function POST(
   req: NextRequest,
 ) {
   return handleRestroStatusUpdate(req);
-}}
+}

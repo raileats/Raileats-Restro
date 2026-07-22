@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getRestroSession } from "@/lib/restroSession";
-import { updateOrderJourneySafe } from "@/lib/orderJourney";
 
 /* =========================================================
    SUPABASE SERVER CLIENT
@@ -18,11 +17,6 @@ function supabaseServer() {
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     "";
 
-  /*
-   * Restaurant order APIs server-side hain.
-   * Service-role key mandatory rakhi gayi hai taaki RLS ki wajah se
-   * Orders aur OrderJourney update silently fail na ho.
-   */
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     "";
@@ -86,7 +80,7 @@ function getSessionRestroCode(session: any) {
   );
 }
 
-function getSessionRestroUserName(
+function getRestroUserName(
   session: any,
   order?: any,
 ) {
@@ -95,15 +89,19 @@ function getSessionRestroUserName(
     cleanText(session?.RestroUserName) ||
     cleanText(session?.userName) ||
     cleanText(session?.UserName) ||
+    cleanText(session?.username) ||
+    cleanText(session?.Username) ||
     cleanText(session?.name) ||
     cleanText(session?.Name) ||
     cleanText(session?.restroName) ||
     cleanText(session?.RestroName) ||
     cleanText(order?.RestroName) ||
     cleanText(order?.restroName) ||
-    (getSessionRestroCode(session)
-      ? `Restro ${getSessionRestroCode(session)}`
-      : "Restro")
+    (
+      getSessionRestroCode(session)
+        ? `Restro ${getSessionRestroCode(session)}`
+        : "Restro"
+    )
   );
 }
 
@@ -117,8 +115,17 @@ function getBookingSource(order: any) {
   );
 }
 
+function getOrderCreatedAt(order: any) {
+  return (
+    cleanText(order?.CreatedAt) ||
+    cleanText(order?.created_at) ||
+    cleanText(order?.createdAt) ||
+    new Date().toISOString()
+  );
+}
+
 /* =========================================================
-   RESTAURANT ACTION MAPPING
+   ACTION MAPPING
 ========================================================= */
 
 type RestroAction =
@@ -131,48 +138,44 @@ type RestroAction =
 
 type ActionDefinition = {
   status: string;
-  stage: string;
+  journeyStage: string;
   defaultRemarks: string;
 };
 
 const ACTION_MAP: Record<RestroAction, ActionDefinition> = {
   accept: {
     status: "In Kitchen",
-    stage: "In Kitchen",
+    journeyStage: "In Kitchen",
     defaultRemarks: "Order accepted by restaurant",
   },
 
   dispatch: {
     status: "Out for Delivery",
-    stage: "Out for Delivery",
+    journeyStage: "Out for Delivery",
     defaultRemarks: "Order dispatched by restaurant",
   },
 
   reject: {
     status: "Cancelled",
-    stage: "Cancelled",
+    journeyStage: "Cancelled",
     defaultRemarks: "Order rejected by restaurant",
   },
 
   delivered: {
     status: "Restro Marked Delivered",
-    stage: "Restro Marked Delivered",
+    journeyStage: "Restro Marked Delivered",
     defaultRemarks: "Restaurant marked order as delivered",
   },
 
-  /*
-   * Restaurant kisi delivery issue ko directly finalise nahi karega.
-   * Pehle complaint report hogi; admin final decision lega.
-   */
   outcome: {
     status: "Complaints",
-    stage: "Complaints",
+    journeyStage: "Complaints",
     defaultRemarks: "Delivery issue reported by restaurant",
   },
 
   complaintresponse: {
     status: "Complaints",
-    stage: "Complaints",
+    journeyStage: "Complaints",
     defaultRemarks: "Restaurant responded to complaint",
   },
 };
@@ -212,24 +215,271 @@ function normalizeRestroAction(
 }
 
 /* =========================================================
-   ORDER LOOKUP
+   JOURNEY COLUMN MAPPING
 ========================================================= */
 
-async function loadRestroOrder({
+type JourneyColumns = {
+  update: string;
+  status: string;
+  subStatus: string;
+  remarks: string;
+  userType: string;
+  userName: string;
+  source: string;
+};
+
+const JOURNEY_COLUMNS: Record<string, JourneyColumns> = {
+  booked: {
+    update: "BookedUpdate",
+    status: "BookedStatus",
+    subStatus: "BookedSubStatus",
+    remarks: "BookedRemarks",
+    userType: "BookedUserType",
+    userName: "BookedUserName",
+    source: "BookedSource",
+  },
+
+  inkitchen: {
+    update: "InKitchenUpdate",
+    status: "InKitchenStatus",
+    subStatus: "InKitchenSubStatus",
+    remarks: "InKitchenRemarks",
+    userType: "InKitchenUserType",
+    userName: "InKitchenUserName",
+    source: "InKitchenSource",
+  },
+
+  outfordelivery: {
+    update: "OutForDeliveryUpdate",
+    status: "OutForDeliveryStatus",
+    subStatus: "OutForDeliverySubStatus",
+    remarks: "OutForDeliveryRemarks",
+    userType: "OutForDeliveryUserType",
+    userName: "OutForDeliveryUserName",
+    source: "OutForDeliverySource",
+  },
+
+  restromarkeddelivered: {
+    update: "RestroMarkedDeliveredUpdate",
+    status: "RestroMarkedDeliveredStatus",
+    subStatus: "RestroMarkedDeliveredSubStatus",
+    remarks: "RestroMarkedDeliveredRemarks",
+    userType: "RestroMarkedDeliveredUserType",
+    userName: "RestroMarkedDeliveredUserName",
+    source: "RestroMarkedDeliveredSource",
+  },
+
+  cancelled: {
+    update: "CancelledUpdate",
+    status: "CancelledStatus",
+    subStatus: "CancelledSubStatus",
+    remarks: "CancelledRemarks",
+    userType: "CancelledUserType",
+    userName: "CancelledUserName",
+    source: "CancelledSource",
+  },
+
+  complaints: {
+    update: "ComplaintsUpdate",
+    status: "ComplaintsStatus",
+    subStatus: "ComplaintsSubStatus",
+    remarks: "ComplaintsRemarks",
+    userType: "ComplaintsUserType",
+    userName: "ComplaintsUserName",
+    source: "ComplaintsSource",
+  },
+};
+
+function getJourneyColumns(
+  stage: string,
+) {
+  return JOURNEY_COLUMNS[
+    normalizeKey(stage)
+  ] || null;
+}
+
+/* =========================================================
+   ORDER JOURNEY DIRECT UPSERT
+========================================================= */
+
+async function upsertOrderJourneyStage({
   supabase,
-  orderId,
-  restroCode,
+  order,
+  stage,
+  status,
+  subStatus,
+  remarks,
+  userType,
+  userName,
+  source,
+  actionAt,
+  overwriteStage = true,
 }: {
   supabase: any;
-  orderId: string;
-  restroCode: number;
+  order: any;
+  stage: string;
+  status: string;
+  subStatus: string | null;
+  remarks: string | null;
+  userType: string;
+  userName: string;
+  source: string;
+  actionAt: string;
+  overwriteStage?: boolean;
 }) {
-  return supabase
-    .from("Orders")
-    .select("*")
-    .eq("OrderId", orderId)
-    .eq("RestroCode", restroCode)
-    .maybeSingle();
+  const orderId =
+    cleanText(order?.OrderId);
+
+  if (!orderId) {
+    throw new Error(
+      "OrderId missing while updating OrderJourney",
+    );
+  }
+
+  const columns =
+    getJourneyColumns(stage);
+
+  if (!columns) {
+    throw new Error(
+      `Unsupported OrderJourney stage: ${stage}`,
+    );
+  }
+
+  const {
+    data: existingJourney,
+    error: findError,
+  } =
+    await supabase
+      .from("OrderJourney")
+      .select("*")
+      .eq("OrderId", orderId)
+      .maybeSingle();
+
+  if (findError) {
+    throw findError;
+  }
+
+  const masterPayload: Record<string, any> = {
+    OrderId: orderId,
+
+    RestroCode:
+      order?.RestroCode ??
+      null,
+
+    RestroName:
+      cleanText(order?.RestroName),
+
+    StationCode:
+      cleanText(order?.StationCode),
+
+    StationName:
+      cleanText(order?.StationName),
+
+    DeliveryDate:
+      cleanText(order?.DeliveryDate),
+
+    DeliveryTime:
+      cleanText(order?.DeliveryTime),
+
+    CurrentStage:
+      stage,
+
+    CurrentStatus:
+      status,
+
+    CurrentSubStatus:
+      subStatus,
+
+    LastRemarks:
+      remarks,
+
+    LastUserType:
+      userType,
+
+    LastUserName:
+      userName,
+
+    LastSource:
+      source,
+
+    LastUpdate:
+      actionAt,
+
+    UpdatedAt:
+      actionAt,
+  };
+
+  const stageAlreadyCaptured =
+    Boolean(
+      existingJourney?.[columns.update],
+    );
+
+  if (
+    !stageAlreadyCaptured ||
+    overwriteStage
+  ) {
+    masterPayload[columns.update] =
+      actionAt;
+
+    masterPayload[columns.status] =
+      status;
+
+    masterPayload[columns.subStatus] =
+      subStatus;
+
+    masterPayload[columns.remarks] =
+      remarks;
+
+    masterPayload[columns.userType] =
+      userType;
+
+    masterPayload[columns.userName] =
+      userName;
+
+    masterPayload[columns.source] =
+      source;
+  }
+
+  if (existingJourney) {
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("OrderJourney")
+        .update(masterPayload)
+        .eq("OrderId", orderId)
+        .select("*")
+        .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  const insertPayload = {
+    ...masterPayload,
+    CreatedAt:
+      actionAt,
+  };
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from("OrderJourney")
+      .insert(insertPayload)
+      .select("*")
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 /* =========================================================
@@ -244,134 +494,105 @@ async function ensureBookedStage({
   order: any;
 }) {
   const orderId =
-    cleanText(order?.OrderId) ||
-    cleanText(order?.orderId);
+    cleanText(order?.OrderId);
 
   if (!orderId) {
     return null;
   }
 
-  /*
-   * Existing row me Booked stage filled hai to helper usko overwrite
-   * nahi karega. Missing ho to Orders table ke data se backfill karega.
-   */
-  return updateOrderJourneySafe({
+  const {
+    data: existingJourney,
+    error,
+  } =
+    await supabase
+      .from("OrderJourney")
+      .select(
+        "OrderId, BookedUpdate",
+      )
+      .eq("OrderId", orderId)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (
+    existingJourney?.BookedUpdate
+  ) {
+    return existingJourney;
+  }
+
+  return upsertOrderJourneyStage({
     supabase,
-    orderId,
+    order,
     stage: "Booked",
-    status:
-      cleanText(order?.Status) ||
-      cleanText(order?.status) ||
-      "Booked",
+    status: "Booked",
     subStatus: null,
     remarks:
       cleanText(order?.BookingRemarks) ||
-      cleanText(order?.bookingRemarks) ||
       "Order created",
     userType: "Customer",
     userName:
       cleanText(order?.CustomerName) ||
-      cleanText(order?.customerName) ||
       "Customer",
-    source: getBookingSource(order),
+    source:
+      getBookingSource(order),
     actionAt:
-      cleanText(order?.CreatedAt) ||
-      cleanText(order?.createdAt) ||
-      new Date().toISOString(),
+      getOrderCreatedAt(order),
     overwriteStage: false,
-    order: {
-      restroCode:
-        order?.RestroCode ??
-        order?.restroCode ??
-        null,
-      restroName:
-        cleanText(
-          order?.RestroName ??
-            order?.restroName,
-        ),
-      stationCode:
-        cleanText(
-          order?.StationCode ??
-            order?.stationCode,
-        ),
-      stationName:
-        cleanText(
-          order?.StationName ??
-            order?.stationName,
-        ),
-      deliveryDate:
-        cleanText(
-          order?.DeliveryDate ??
-            order?.deliveryDate,
-        ),
-      deliveryTime:
-        cleanText(
-          order?.DeliveryTime ??
-            order?.deliveryTime,
-        ),
-    },
   });
 }
 
 /* =========================================================
-   CENTRAL STATUS ROUTE
+   VALID STATUS TRANSITIONS
 ========================================================= */
 
-async function callCentralStatusRoute({
-  req,
-  orderId,
-  status,
-  subStatus,
-  remarks,
-  restroUserName,
-}: {
-  req: NextRequest;
-  orderId: string;
-  status: string;
-  subStatus: string | null;
-  remarks: string | null;
-  restroUserName: string;
-}) {
-  const targetUrl =
-    new URL(
-      `/api/orders/${encodeURIComponent(orderId)}/status`,
-      req.nextUrl.origin,
-    );
+function isActionAllowed(
+  currentStatus: unknown,
+  action: RestroAction,
+) {
+  const statusKey =
+    normalizeKey(currentStatus);
 
-  const response =
-    await fetch(targetUrl, {
-      method: "PATCH",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        newStatus: status,
-        subStatus,
-        remarks,
-        note: remarks,
+  const allowed: Record<
+    RestroAction,
+    string[]
+  > = {
+    accept: [
+      "neworder",
+      "booked",
+      "inverification",
+    ],
 
-        /*
-         * Ye values OrderJourney me exact restaurant actor capture
-         * karne ke liye central route ko bheji ja rahi hain.
-         */
-        userType: "Restro",
-        userName: restroUserName,
-        changedBy: restroUserName,
-        actionSource: "Restro Panel",
-      }),
-    });
+    dispatch: [
+      "inkitchen",
+    ],
 
-  const payload =
-    await response
-      .json()
-      .catch(() => ({}));
+    delivered: [
+      "outfordelivery",
+    ],
 
-  return {
-    response,
-    payload,
+    reject: [
+      "neworder",
+      "booked",
+      "inverification",
+      "inkitchen",
+    ],
+
+    outcome: [
+      "outfordelivery",
+      "restromarkeddelivered",
+    ],
+
+    complaintresponse: [
+      "complaints",
+      "complaint",
+    ],
   };
+
+  return allowed[action].includes(
+    statusKey,
+  );
 }
 
 /* =========================================================
@@ -449,17 +670,20 @@ export async function GET() {
         restro: {
           RestroCode:
             restroCode,
+
           RestroName:
-            getSessionRestroUserName(
+            getRestroUserName(
               session,
               firstOrder,
             ),
+
           StationCode:
             cleanText(
               session?.stationCode ??
                 session?.StationCode ??
                 firstOrder?.StationCode,
             ),
+
           StationName:
             cleanText(
               session?.stationName ??
@@ -496,7 +720,7 @@ export async function GET() {
 }
 
 /* =========================================================
-   PATCH: RESTAURANT STATUS MARKING
+   PATCH: RESTAURANT STATUS UPDATE
 ========================================================= */
 
 export async function PATCH(
@@ -589,12 +813,6 @@ export async function PATCH(
       );
     }
 
-    const actionDefinition =
-      ACTION_MAP[action];
-
-    /*
-     * Reject, outcome aur complaint response ke liye reason mandatory.
-     */
     if (
       (
         action === "reject" ||
@@ -622,11 +840,18 @@ export async function PATCH(
       data: order,
       error: orderError,
     } =
-      await loadRestroOrder({
-        supabase,
-        orderId,
-        restroCode,
-      });
+      await supabase
+        .from("Orders")
+        .select("*")
+        .eq(
+          "OrderId",
+          orderId,
+        )
+        .eq(
+          "RestroCode",
+          restroCode,
+        )
+        .maybeSingle();
 
     if (orderError) {
       throw orderError;
@@ -645,8 +870,29 @@ export async function PATCH(
       );
     }
 
+    if (
+      !isActionAllowed(
+        order.Status,
+        action,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            `Action "${action}" is not allowed when order status is "${order.Status || "Unknown"}"`,
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    const actionDefinition =
+      ACTION_MAP[action];
+
     const restroUserName =
-      getSessionRestroUserName(
+      getRestroUserName(
         session,
         order,
       );
@@ -659,9 +905,11 @@ export async function PATCH(
           : actionDefinition.defaultRemarks
       );
 
+    const changedAt =
+      new Date().toISOString();
+
     /*
-     * Purane order me Booked stage missing hai to current restaurant
-     * action se pehle Customer actor ke saath backfill ho jayegi.
+     * Existing old orders ke liye missing Booked stage backfill.
      */
     const bookedJourney =
       await ensureBookedStage({
@@ -669,143 +917,102 @@ export async function PATCH(
         order,
       });
 
-    const changedAt =
-      new Date().toISOString();
-
     /*
-     * Existing central status API ko use karne se penalty, IGST,
-     * RestroRDS hard lock aur prepaid refund logic preserve rahega.
+     * Pehle Orders table update hogi.
      */
-    const {
-      response,
-      payload,
-    } =
-      await callCentralStatusRoute({
-        req,
-        orderId,
-        status:
-          actionDefinition.status,
-        subStatus,
-        remarks,
-        restroUserName,
-      });
+    const orderUpdatePayload: Record<
+      string,
+      any
+    > = {
+      Status:
+        actionDefinition.status,
 
-    if (
-      !response.ok ||
-      !payload?.ok
-    ) {
-      return NextResponse.json(
-        {
-          ...payload,
-          ok: false,
-          error:
-            payload?.error ||
-            payload?.message ||
-            "Unable to update order",
-        },
-        {
-          status:
-            response.status || 500,
-        },
+      SubStatus:
+        subStatus,
+
+      UpdatedAt:
+        changedAt,
+    };
+
+    const {
+      data: updatedOrder,
+      error: updateError,
+    } =
+      await supabase
+        .from("Orders")
+        .update(orderUpdatePayload)
+        .eq(
+          "OrderId",
+          orderId,
+        )
+        .eq(
+          "RestroCode",
+          restroCode,
+        )
+        .select("*")
+        .maybeSingle();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    if (!updatedOrder) {
+      throw new Error(
+        "Order status update failed",
       );
     }
 
     /*
-     * Safety enforcement:
-     * Central route successful hone ke baad same stage ko explicit
-     * Restro actor ke saath overwrite karte hain. Isse Admin fallback
-     * ya purani wrong actor value permanently correct ho jayegi.
+     * Ab exact Restro actor OrderJourney me capture hoga.
      */
-    const enforcedJourney =
-      await updateOrderJourneySafe({
+    const journey =
+      await upsertOrderJourneyStage({
         supabase,
-        orderId,
+        order:
+          updatedOrder,
         stage:
-          actionDefinition.stage,
+          actionDefinition.journeyStage,
         status:
           actionDefinition.status,
         subStatus,
         remarks,
-        userType: "Restro",
+        userType:
+          "Restro",
         userName:
           restroUserName,
         source:
           "Restro Panel",
         actionAt:
           changedAt,
-        overwriteStage: true,
-        order: {
-          restroCode:
-            order.RestroCode ??
-            restroCode,
-          restroName:
-            cleanText(
-              order.RestroName,
-            ),
-          stationCode:
-            cleanText(
-              order.StationCode,
-            ),
-          stationName:
-            cleanText(
-              order.StationName,
-            ),
-          deliveryDate:
-            cleanText(
-              order.DeliveryDate,
-            ),
-          deliveryTime:
-            cleanText(
-              order.DeliveryTime,
-            ),
-        },
+        overwriteStage:
+          true,
       });
-
-    if (!enforcedJourney) {
-      /*
-       * Status update ho chuka hai, lekin actor log fail hua to success
-       * return karke silent nahi rahenge. UI clear warning dikhayegi.
-       */
-      return NextResponse.json(
-        {
-          ok: false,
-          statusUpdated: true,
-          error:
-            "Order status updated, but Restro actor could not be captured in OrderJourney. Check server logs.",
-          row:
-            payload?.row ??
-            null,
-          bookedJourney:
-            bookedJourney ??
-            null,
-          centralJourney:
-            payload?.journey ??
-            null,
-        },
-        {
-          status: 500,
-        },
-      );
-    }
 
     return NextResponse.json({
       ok: true,
+
       row:
-        payload?.row ??
-        null,
+        updatedOrder,
 
       action,
+
       status:
         actionDefinition.status,
+
       subStatus,
+
       remarks,
 
       actor: {
-        userType: "Restro",
+        userType:
+          "Restro",
+
         userName:
           restroUserName,
+
         source:
           "Restro Panel",
+
         restroCode,
       },
 
@@ -814,14 +1021,7 @@ export async function PATCH(
         null,
 
       journey:
-        enforcedJourney,
-
-      restroRds:
-        payload?.restroRds ??
-        null,
-
-      refund:
-        payload?.refund ??
+        journey ??
         null,
     });
   } catch (error: any) {

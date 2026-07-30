@@ -66,6 +66,37 @@ function cleanPassword(
   ).trim();
 }
 
+function getUniversalAdminCredentials() {
+  return {
+    mobile: cleanMobile(
+      process.env.UNIVERSAL_ADMIN_MOBILE
+    ),
+    password: cleanPassword(
+      process.env.UNIVERSAL_ADMIN_PASSWORD
+    ),
+  };
+}
+
+function universalAdminData(
+  mobile: string
+) {
+  return {
+    Role: "UNIVERSAL_ADMIN",
+    RestroCode: null,
+    RestroName: "Railway Eats Admin",
+    StationCode: "ALL",
+    StationName: "All India",
+    State: null,
+    RestroLoginMobile: mobile,
+    RestroUserName: "Railway Eats Admin",
+    OwnerName: "Railway Eats Admin",
+    RestroDisplayPhoto: null,
+    Email: "support@raileats.in",
+    Address:
+      "Flat 2C, Third Floor, First Block, Mohali, Punjab 140603",
+  };
+}
+
 function timingSafeTextEqual(
   left: string,
   right: string
@@ -92,6 +123,9 @@ function safeRestroData(
   row: any
 ) {
   return {
+    Role:
+      "RESTRO",
+
     RestroCode:
       row?.RestroCode,
 
@@ -167,6 +201,75 @@ export async function POST(
           status: 400,
         }
       );
+    }
+
+    const universal =
+      getUniversalAdminCredentials();
+
+    const isUniversalMobile =
+      universal.mobile.length === 10 &&
+      timingSafeTextEqual(
+        mobile,
+        universal.mobile
+      );
+
+    if (isUniversalMobile) {
+      if (
+        !universal.password ||
+        !timingSafeTextEqual(
+          password,
+          universal.password
+        )
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Invalid mobile number or password",
+          },
+          {
+            status: 401,
+          }
+        );
+      }
+
+      const token =
+        createRestroSessionToken({
+          role:
+            "UNIVERSAL_ADMIN",
+          restroCode:
+            null,
+          mobile,
+        });
+
+      const response =
+        NextResponse.json(
+          {
+            ok: true,
+            message:
+              "Login successful",
+            restro:
+              universalAdminData(
+                mobile
+              ),
+          },
+          {
+            status: 200,
+          }
+        );
+
+      response.cookies.set(
+        RESTRO_SESSION_COOKIE,
+        token,
+        getRestroSessionCookieOptions()
+      );
+
+      response.headers.set(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate"
+      );
+
+      return response;
     }
 
     const supabase =
@@ -262,6 +365,8 @@ export async function POST(
     const token =
       createRestroSessionToken(
         {
+          role:
+            "RESTRO",
           restroCode,
           mobile,
         }

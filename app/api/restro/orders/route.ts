@@ -317,6 +317,36 @@ const JOURNEY_COLUMNS: Record<string, JourneyColumns> = {
     actionAtTime: "BookedActionAtTime",
   },
 
+  inverification: {
+    update: "InVerificationUpdate",
+    remarks: "InVerificationRemarks",
+    userType: "InVerificationUserType",
+    userName: "InVerificationUserName",
+    source: "InVerificationSource",
+    actionAtDate: "InVerificationActionAtDate",
+    actionAtTime: "InVerificationActionAtTime",
+  },
+
+  cancellationrequest: {
+    update: "CancellationRequestUpdate",
+    remarks: "CancellationRequestRemarks",
+    userType: "CancellationRequestUserType",
+    userName: "CancellationRequestUserName",
+    source: "CancellationRequestSource",
+    actionAtDate: "CancellationRequestActionAtDate",
+    actionAtTime: "CancellationRequestActionAtTime",
+  },
+
+  neworder: {
+    update: "NewOrderUpdate",
+    remarks: "NewOrderRemarks",
+    userType: "NewOrderUserType",
+    userName: "NewOrderUserName",
+    source: "NewOrderSource",
+    actionAtDate: "NewOrderActionAtDate",
+    actionAtTime: "NewOrderActionAtTime",
+  },
+
   inkitchen: {
     update: "InKitchenUpdate",
     remarks: "InKitchenRemarks",
@@ -365,6 +395,56 @@ const JOURNEY_COLUMNS: Record<string, JourneyColumns> = {
     source: "ComplaintsSource",
     actionAtDate: "ComplaintsActionAtDate",
     actionAtTime: "ComplaintsActionAtTime",
+  },
+
+  delivered: {
+    update: "DeliveredUpdate",
+    remarks: "DeliveredRemarks",
+    userType: "DeliveredUserType",
+    userName: "DeliveredUserName",
+    source: "DeliveredSource",
+    actionAtDate: "DeliveredActionAtDate",
+    actionAtTime: "DeliveredActionAtTime",
+  },
+
+  notdelivered: {
+    update: "NotDeliveredUpdate",
+    remarks: "NotDeliveredRemarks",
+    userType: "NotDeliveredUserType",
+    userName: "NotDeliveredUserName",
+    source: "NotDeliveredSource",
+    actionAtDate: "NotDeliveredActionAtDate",
+    actionAtTime: "NotDeliveredActionAtTime",
+  },
+
+  refund: {
+    update: "RefundUpdate",
+    remarks: "RefundRemarks",
+    userType: "RefundUserType",
+    userName: "RefundUserName",
+    source: "RefundSource",
+    actionAtDate: "RefundActionAtDate",
+    actionAtTime: "RefundActionAtTime",
+  },
+
+  baddelivery: {
+    update: "BadDeliveryUpdate",
+    remarks: "BadDeliveryRemarks",
+    userType: "BadDeliveryUserType",
+    userName: "BadDeliveryUserName",
+    source: "BadDeliverySource",
+    actionAtDate: "BadDeliveryActionAtDate",
+    actionAtTime: "BadDeliveryActionAtTime",
+  },
+
+  partialdelivery: {
+    update: "PartialDeliveryUpdate",
+    remarks: "PartialDeliveryRemarks",
+    userType: "PartialDeliveryUserType",
+    userName: "PartialDeliveryUserName",
+    source: "PartialDeliverySource",
+    actionAtDate: "PartialDeliveryActionAtDate",
+    actionAtTime: "PartialDeliveryActionAtTime",
   },
 };
 

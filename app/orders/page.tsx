@@ -349,7 +349,8 @@ export default function OrdersPage() {
           try {
             if ("vibrate" in window.navigator) {
               window.navigator.vibrate([
-                1000, 180, 1000, 180, 1000, 180, 1400,
+                1200, 150, 1200, 150, 1200, 150, 1200, 150,
+                1200, 150, 1200, 150, 1200, 150, 1200,
               ]);
             }
           } catch (error) {
@@ -406,7 +407,8 @@ export default function OrdersPage() {
             try {
               if ("vibrate" in window.navigator) {
                 window.navigator.vibrate([
-                  1000, 180, 1000, 180, 1000, 180, 1400,
+                  1200, 150, 1200, 150, 1200, 150, 1200, 150,
+                  1200, 150, 1200, 150, 1200, 150, 1200,
                 ]);
               }
             } catch (error) {
@@ -458,6 +460,17 @@ export default function OrdersPage() {
             }
           } catch (e) {
             console.log("RESTRO AUDIO ERROR", e);
+          }
+
+          try {
+            if ("vibrate" in window.navigator) {
+              window.navigator.vibrate([
+                1200, 150, 1200, 150, 1200, 150, 1200, 150,
+                1200, 150, 1200, 150, 1200, 150, 1200,
+              ]);
+            }
+          } catch (error) {
+            console.log("NEW ORDER VIBRATION FAILED", error);
           }
 
           showOrderNotification(

@@ -18,6 +18,9 @@ import React, {
 } from "react";
 
 type RestroSessionData = {
+  Role?:
+    "RESTRO" | "UNIVERSAL_ADMIN" | null;
+
   RestroCode?:
     number | string | null;
 
@@ -43,6 +46,12 @@ type RestroSessionData = {
     string | null;
 
   RestroDisplayPhoto?:
+    string | null;
+
+  Email?:
+    string | null;
+
+  Address?:
     string | null;
 };
 
@@ -217,11 +226,17 @@ function readStoredRestro() {
         raw
       );
 
+    if (!parsed) {
+      return null;
+    }
+
+    const isUniversal =
+      parsed.Role ===
+      "UNIVERSAL_ADMIN";
+
     if (
-      !parsed ||
-      !Number(
-        parsed.RestroCode
-      )
+      !isUniversal &&
+      !Number(parsed.RestroCode)
     ) {
       return null;
     }
@@ -501,6 +516,13 @@ export default function RestroShell({
   const subtitle =
     useMemo(
       () => {
+        if (
+          restro?.Role ===
+          "UNIVERSAL_ADMIN"
+        ) {
+          return "All India";
+        }
+
         const station =
           [
             restro
@@ -587,10 +609,13 @@ export default function RestroShell({
 
         <div className="flex flex-shrink-0 items-center gap-2">
           <div className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-black text-white shadow-sm">
-            {textValue(
-              restro
-                ?.RestroCode
-            )
+            {restro?.Role ===
+            "UNIVERSAL_ADMIN"
+              ? "Admin"
+              : textValue(
+                  restro
+                    ?.RestroCode
+                )
               ? `Code ${restro?.RestroCode}`
               : "Partner"}
           </div>

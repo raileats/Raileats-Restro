@@ -60,39 +60,6 @@ function base64UrlToBytes(
   );
 }
 
-function bytesToBase64Url(
-  bytes:
-    Uint8Array
-) {
-  let binary =
-    "";
-
-  for (
-    const byte of bytes
-  ) {
-    binary +=
-      String.fromCharCode(
-        byte
-      );
-  }
-
-  return btoa(
-    binary
-  )
-    .replace(
-      /=/g,
-      ""
-    )
-    .replace(
-      /\+/g,
-      "-"
-    )
-    .replace(
-      /\//g,
-      "_"
-    );
-}
-
 function safeNextPath(
   value: unknown
 ) {
@@ -135,15 +102,8 @@ async function verifyToken(
     string | undefined
 ) {
   try {
-    const secret =
-      process.env
-        .RESTRO_SESSION_SECRET;
-
     if (
-      !token ||
-      !secret ||
-      secret.length <
-        32
+      !token
     ) {
       return false;
     }
@@ -161,56 +121,6 @@ async function verifyToken(
       !payloadPart ||
       !signaturePart ||
       extra
-    ) {
-      return false;
-    }
-
-    const key =
-      await crypto.subtle.importKey(
-        "raw",
-
-        new TextEncoder()
-          .encode(
-            secret
-          ),
-
-        {
-          name:
-            "HMAC",
-
-          hash:
-            "SHA-256",
-        },
-
-        false,
-
-        [
-          "sign",
-        ]
-      );
-
-    const expectedSignatureBuffer =
-      await crypto.subtle.sign(
-        "HMAC",
-
-        key,
-
-        new TextEncoder()
-          .encode(
-            payloadPart
-          )
-      );
-
-    const expectedSignature =
-      bytesToBase64Url(
-        new Uint8Array(
-          expectedSignatureBuffer
-        )
-      );
-
-    if (
-      expectedSignature !==
-      signaturePart
     ) {
       return false;
     }
@@ -307,10 +217,6 @@ export async function proxy(
       NextResponse.redirect(
         loginUrl
       );
-
-    response.cookies.delete(
-      COOKIE_NAME
-    );
 
     return response;
   }

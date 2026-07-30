@@ -202,7 +202,7 @@ export default function OrdersPage() {
   // टैब पेजिनेशन स्टेट (एक बार में सिर्फ 2 टैब दिखाने के लिए)
   const [tabSet, setTabSet] = useState(0);
 
-  const allTabs = [
+  const restroTabs = [
     { label: "New Order", icon: "🔔" },
     { label: "In Kitchen", icon: "🍳" },
     { label: "Out for Delivery", icon: "🛵" },
@@ -212,6 +212,32 @@ export default function OrdersPage() {
     { label: "Cancelled", icon: "❌" },
     { label: "Not Delivered", icon: "🚫" }
   ];
+
+  const universalAdminTabs = [
+    { label: "Booked", icon: "📘" },
+    { label: "In Verification", icon: "🔎" },
+    { label: "Cancellation Request", icon: "📝" },
+    { label: "New Order", icon: "🔔" },
+    { label: "In Kitchen", icon: "🍳" },
+    { label: "Out for Delivery", icon: "🛵" },
+    { label: "Restro Mark Delivered", icon: "✅" },
+    { label: "Complaints", icon: "⚠️" },
+    { label: "Delivered", icon: "🏁" },
+    { label: "Cancelled", icon: "❌" },
+    { label: "Not Delivered", icon: "🚫" },
+    { label: "Refund", icon: "↩️" },
+    { label: "Bad Delivery", icon: "👎" },
+    { label: "Partial Delivery", icon: "◐" },
+    { label: "All", icon: "📋" },
+  ];
+
+  const isUniversalAdmin =
+    restro?.Role === "UNIVERSAL_ADMIN";
+
+  const allTabs =
+    isUniversalAdmin
+      ? universalAdminTabs
+      : restroTabs;
 
   // अभी कौन से दो टैब दिखेंगे
   const visibleTabs = allTabs.slice(tabSet * 2, (tabSet * 2) + 2);
@@ -418,9 +444,10 @@ export default function OrdersPage() {
   // Secure restaurant order marking through server API.
   async function handleUpdateStatus(
     order: any,
-    action: "accept" | "dispatch" | "reject" | "delivered" | "outcome" | "complaintresponse",
+    action: "accept" | "dispatch" | "reject" | "delivered" | "outcome" | "complaintresponse" | "adminstatus",
     finalSubStatus = "",
     finalRemarks = "",
+    targetStatus = "",
   ) {
     try {
       setSubmittingAction(true);
@@ -433,6 +460,7 @@ export default function OrdersPage() {
           action,
           subStatus: finalSubStatus || null,
           remarks: String(finalRemarks || "").trim() || null,
+          targetStatus: targetStatus || null,
         }),
       });
 
@@ -453,6 +481,19 @@ export default function OrdersPage() {
     } finally {
       setSubmittingAction(false);
     }
+  }
+
+  async function handleUniversalMove(
+    order: any,
+    targetStatus: string,
+  ) {
+    await handleUpdateStatus(
+      order,
+      "adminstatus",
+      "",
+      `Moved from ${order?.Status || "Unknown"} to ${targetStatus}`,
+      targetStatus,
+    );
   }
 
   const handleOpenActionModal = (order: any, type: typeof actionType) => {
@@ -777,40 +818,47 @@ export default function OrdersPage() {
     setPullDistance(0);
   };
 
-  const filteredOrders = orders.filter((item) => {
-    const status = item.Status?.toLowerCase().trim();
-    if (
-      activeTab === "New Order" &&
-      (status === "new order" || status === "neworder")
-    ) {
-      return true;
+  const normalizeStatus = (value: any) =>
+    String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+
+  const orderMatchesTab = (item: any, tabLabel: string) => {
+    if (tabLabel === "All") return true;
+
+    const status = normalizeStatus(item?.Status);
+    const subStatus = normalizeStatus(item?.SubStatus);
+    const tab = normalizeStatus(tabLabel);
+
+    if (tab === "restromarkdelivered") {
+      return status === "restromarkeddelivered";
     }
-    if (activeTab === "In Kitchen" && status === "in kitchen") {
-      return true;
+
+    if (tab === "baddelivery" || tab === "partialdelivery") {
+      return status === tab || subStatus === tab;
     }
-    if (activeTab === "Out for Delivery" && status === "out for delivery") {
-      return true;
+
+    if (tab === "refund") {
+      return (
+        status === "refund" ||
+        status.startsWith("refund") ||
+        normalizeStatus(item?.RefundStatus).startsWith("refund")
+      );
     }
-    if (
-      activeTab === "Restro Marked Delivered" &&
-      (status === "restro marked delivered" || status === "restromarkeddelivered")
-    ) {
-      return true;
-    }
-    if (activeTab === "Complaints" && (status === "complaints" || status === "complaint")) {
-      return true;
-    }
-    if (activeTab === "Delivered" && status === "delivered") {
-      return true;
-    }
-    if (activeTab === "Cancelled" && status === "cancelled") {
-      return true;
-    }
-    if (activeTab === "Not Delivered" && status === "not delivered") {
-      return true;
-    }
-    return false;
-  });
+
+    return status === tab;
+  };
+
+  const filteredOrders =
+    orders.filter((item) =>
+      orderMatchesTab(item, activeTab)
+    );
+
+  const tabCount = (label: string) =>
+    orders.filter((item) =>
+      orderMatchesTab(item, label)
+    ).length;
 
   return (
     <div className="h-full w-full flex flex-col bg-[#f7f9fc] overflow-hidden relative shadow-2xl select-none overscroll-contain">
@@ -850,6 +898,17 @@ export default function OrdersPage() {
                 >
                   <span className="flex-shrink-0">{tab.icon}</span>
                   <span className="truncate">{tab.label}</span>
+                  {isUniversalAdmin && (
+                    <span
+                      className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-white text-gray-500"
+                      }`}
+                    >
+                      {tabCount(tab.label)}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1016,6 +1075,53 @@ export default function OrdersPage() {
 
                   {/* Contextual Quick Actions Mapping */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {isUniversalAdmin && activeTab === "Booked" && (
+                      <button
+                        disabled={submittingAction}
+                        onClick={() => handleUniversalMove(item, "In Verification")}
+                        className="bg-[#2f54eb] text-white font-black text-[11px] px-3 py-1.5 rounded-xl"
+                      >
+                        Verify
+                      </button>
+                    )}
+
+                    {isUniversalAdmin && activeTab === "In Verification" && (
+                      <>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "New Order")}
+                          className="bg-green-600 text-white font-black text-[11px] px-3 py-1.5 rounded-xl"
+                        >
+                          Send to Restro
+                        </button>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "Cancellation Request")}
+                          className="bg-red-50 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                        >
+                          Cancel Request
+                        </button>
+                      </>
+                    )}
+
+                    {isUniversalAdmin && activeTab === "Cancellation Request" && (
+                      <>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "Cancelled")}
+                          className="bg-red-600 text-white font-black text-[11px] px-3 py-1.5 rounded-xl"
+                        >
+                          Cancel Order
+                        </button>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "New Order")}
+                          className="bg-green-50 text-green-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                        >
+                          Continue
+                        </button>
+                      </>
+                    )}
                     
                     {/* CASE 1: NEW ORDER TAB -> ACCEPT / REJECT BUTTONS */}
                     {activeTab === "New Order" && (
@@ -1075,12 +1181,57 @@ export default function OrdersPage() {
                     )}
 
                     {activeTab === "Complaints" && (
-                      <button
-                        onClick={() => handleOpenActionModal(item, "complaintresponse")}
-                        className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
-                      >
-                        Respond
-                      </button>
+                      isUniversalAdmin ? (
+                        <>
+                          <button
+                            disabled={submittingAction}
+                            onClick={() => handleUniversalMove(item, "Delivered")}
+                            className="bg-green-600 text-white font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                          >
+                            Delivered
+                          </button>
+                          <button
+                            disabled={submittingAction}
+                            onClick={() => handleUniversalMove(item, "Not Delivered")}
+                            className="bg-red-50 text-red-600 font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                          >
+                            Not Delivered
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenActionModal(item, "complaintresponse")}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition"
+                        >
+                          Respond
+                        </button>
+                      )
+                    )}
+
+                    {isUniversalAdmin && activeTab === "Restro Mark Delivered" && (
+                      <>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "Delivered")}
+                          className="bg-green-600 text-white font-black text-[11px] px-3 py-1.5 rounded-xl"
+                        >
+                          Confirm Delivered
+                        </button>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "Bad Delivery")}
+                          className="bg-amber-50 text-amber-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                        >
+                          Bad
+                        </button>
+                        <button
+                          disabled={submittingAction}
+                          onClick={() => handleUniversalMove(item, "Partial Delivery")}
+                          className="bg-orange-50 text-orange-700 font-black text-[11px] px-2.5 py-1.5 rounded-xl"
+                        >
+                          Partial
+                        </button>
+                      </>
                     )}
 
                     {/* View Details Default Button */}

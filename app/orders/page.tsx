@@ -122,7 +122,9 @@ const HARD_ORDER_VIBRATION_PATTERN = [
   1400, 180, 1400, 180, 1400, 180,
 ];
 
-function startHardOrderVibration(alertName: "BOOKED ORDER" | "NEW ORDER") {
+function startHardOrderVibration(
+  alertName: "BOOKED ORDER" | "NEW ORDER" | "IN VERIFICATION",
+) {
   if (
     typeof window === "undefined" ||
     !("vibrate" in window.navigator)
@@ -229,6 +231,7 @@ export default function OrdersPage() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const bookedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const verificationReminderKeysRef = useRef<Set<string>>(new Set());
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   
@@ -501,6 +504,149 @@ export default function OrdersPage() {
 
     return () => clearInterval(interval);
   }, [restro]);
+
+  /* ========== IN VERIFICATION: EVERY 5 MIN REMINDER ========== */
+  useEffect(() => {
+    if (
+      restro?.Role !== "UNIVERSAL_ADMIN" ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const reminderEveryMs = 5 * 60 * 1000;
+
+    const getVerificationStartedAt = (order: any) => {
+      const direct = String(
+        order?.InVerificationAt ??
+          order?.InVerificationActionAt ??
+          "",
+      ).trim();
+
+      if (direct) {
+        const parsed = new Date(direct).getTime();
+        if (Number.isFinite(parsed)) return parsed;
+      }
+
+      const date = String(
+        order?.InVerificationActionAtDate ?? "",
+      ).trim();
+      const time = String(
+        order?.InVerificationActionAtTime ?? "00:00:00",
+      ).trim();
+
+      if (!date) return null;
+
+      const normalizedTime =
+        /^\d{2}:\d{2}$/.test(time)
+          ? `${time}:00`
+          : time;
+      const parsed = new Date(
+        `${date}T${normalizedTime}`,
+      ).getTime();
+
+      return Number.isFinite(parsed)
+        ? parsed
+        : null;
+    };
+
+    const playDueReminders = () => {
+      const now = Date.now();
+      const dueOrders: any[] = [];
+      const activeKeys = new Set<string>();
+
+      for (const order of orders) {
+        const status = String(order?.Status ?? "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+
+        if (status !== "inverification") continue;
+
+        const startedAt =
+          getVerificationStartedAt(order);
+        if (!startedAt || startedAt > now) continue;
+
+        const completedIntervals = Math.floor(
+          (now - startedAt) / reminderEveryMs,
+        );
+
+        if (completedIntervals < 1) continue;
+
+        const orderId = String(
+          order?.OrderId ?? order?.id ?? "unknown",
+        );
+        const reminderKey =
+          `${orderId}:${startedAt}:${completedIntervals}`;
+
+        activeKeys.add(reminderKey);
+
+        if (
+          !verificationReminderKeysRef.current.has(
+            reminderKey,
+          )
+        ) {
+          dueOrders.push(order);
+          verificationReminderKeysRef.current.add(
+            reminderKey,
+          );
+        }
+      }
+
+      // Purane status/bucket keys ko memory se hata dete hain.
+      verificationReminderKeysRef.current =
+        new Set(
+          [...verificationReminderKeysRef.current].filter(
+            (key) => activeKeys.has(key),
+          ),
+        );
+
+      if (dueOrders.length === 0) return;
+
+      startHardOrderVibration("IN VERIFICATION");
+
+      try {
+        if (bookedAudioRef.current) {
+          bookedAudioRef.current.pause();
+          bookedAudioRef.current.currentTime = 0;
+          bookedAudioRef.current.volume = 1;
+          void bookedAudioRef.current
+            .play()
+            .catch((error) => {
+              console.log(
+                "IN VERIFICATION SOUND FAILED",
+                error,
+              );
+            });
+        }
+      } catch (error) {
+        console.log(
+          "IN VERIFICATION AUDIO ERROR",
+          error,
+        );
+      }
+
+      const firstOrderId =
+        dueOrders[0]?.OrderId || "Order";
+
+      showOrderNotification(
+        "Order In Verification",
+        dueOrders.length === 1
+          ? `${firstOrderId} is still waiting for verification`
+          : `${dueOrders.length} orders are still waiting for verification`,
+      );
+    };
+
+    playDueReminders();
+    const interval = window.setInterval(
+      playDueReminders,
+      1000,
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [orders, restro]);
 
   async function loadData() {
     try {

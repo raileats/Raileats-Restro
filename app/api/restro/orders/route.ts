@@ -202,7 +202,8 @@ type RestroAction =
   | "reject"
   | "delivered"
   | "outcome"
-  | "complaintresponse";
+  | "complaintresponse"
+  | "adminstatus";
 
 type ActionDefinition = {
   status: string;
@@ -246,6 +247,12 @@ const ACTION_MAP: Record<RestroAction, ActionDefinition> = {
     journeyStage: "Complaints",
     defaultRemarks: "Restaurant responded to complaint",
   },
+
+  adminstatus: {
+    status: "Booked",
+    journeyStage: "Booked",
+    defaultRemarks: "Order status updated by Universal Admin",
+  },
 };
 
 function normalizeRestroAction(
@@ -277,6 +284,9 @@ function normalizeRestroAction(
 
     complaintresponse: "complaintresponse",
     respondcomplaint: "complaintresponse",
+
+    adminstatus: "adminstatus",
+    adminmove: "adminstatus",
   };
 
   return aliases[key] || null;
@@ -640,6 +650,8 @@ function isActionAllowed(
       "complaints",
       "complaint",
     ],
+
+    adminstatus: [],
   };
 
   return allowed[action].includes(
@@ -1293,6 +1305,30 @@ async function handleRestroStatusUpdate(
           body?.Remarks,
       );
 
+    const requestedStatus =
+      cleanText(
+        body?.targetStatus ??
+          body?.TargetStatus,
+      );
+
+    const universalAdminStatuses =
+      new Set([
+        "Booked",
+        "In Verification",
+        "Cancellation Request",
+        "New Order",
+        "In Kitchen",
+        "Out for Delivery",
+        "Restro Marked Delivered",
+        "Complaints",
+        "Delivered",
+        "Cancelled",
+        "Not Delivered",
+        "Refund",
+        "Bad Delivery",
+        "Partial Delivery",
+      ]);
+
     if (!orderId) {
       return NextResponse.json(
         {
@@ -1315,6 +1351,28 @@ async function handleRestroStatusUpdate(
         },
         {
           status: 400,
+        },
+      );
+    }
+
+    if (
+      action === "adminstatus" &&
+      (
+        !isUniversalAdmin ||
+        !requestedStatus ||
+        !universalAdminStatuses.has(
+          requestedStatus,
+        )
+      )
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Invalid Universal Admin status action",
+        },
+        {
+          status: 403,
         },
       );
     }
@@ -1435,6 +1493,7 @@ async function handleRestroStatusUpdate(
     }
 
     if (
+      action !== "adminstatus" &&
       !isActionAllowed(
         order.Status,
         action,
@@ -1453,7 +1512,16 @@ async function handleRestroStatusUpdate(
     }
 
     const actionDefinition =
-      ACTION_MAP[action];
+      action === "adminstatus"
+        ? {
+            status:
+              requestedStatus!,
+            journeyStage:
+              requestedStatus!,
+            defaultRemarks:
+              `Order moved to ${requestedStatus} by Universal Admin`,
+          }
+        : ACTION_MAP[action];
 
     const restroUserName =
       await getRestroActorName({
@@ -1567,11 +1635,15 @@ async function handleRestroStatusUpdate(
         subStatus,
         remarks,
         userType:
-          "Restro",
+          isUniversalAdmin
+            ? "Admin"
+            : "Restro",
         userName:
           restroUserName,
         source:
-          "Restro Panel",
+          isUniversalAdmin
+            ? "Universal Admin Panel"
+            : "Restro Panel",
         actionAt:
           changedAt,
         overwriteStage:
@@ -1595,13 +1667,17 @@ async function handleRestroStatusUpdate(
 
       actor: {
         userType:
-          "Restro",
+          isUniversalAdmin
+            ? "Admin"
+            : "Restro",
 
         userName:
           restroUserName,
 
         source:
-          "Restro Panel",
+          isUniversalAdmin
+            ? "Universal Admin Panel"
+            : "Restro Panel",
 
         restroCode,
       },

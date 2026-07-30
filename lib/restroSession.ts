@@ -6,8 +6,11 @@ import { cookies } from "next/headers";
 export const RESTRO_SESSION_COOKIE = "raileats_restro_session";
 export const RESTRO_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-type RestroSessionPayload = {
-  restroCode: number;
+export type RestroSessionRole = "RESTRO" | "UNIVERSAL_ADMIN";
+
+export type RestroSessionPayload = {
+  role: RestroSessionRole;
+  restroCode: number | null;
   mobile: string;
   issuedAt: number;
   expiresAt: number;
@@ -60,13 +63,17 @@ function safeEqual(left: string, right: string) {
 }
 
 export function createRestroSessionToken(input: {
-  restroCode: number;
+  role?: RestroSessionRole;
+  restroCode?: number | null;
   mobile: string;
 }) {
   const now = Math.floor(Date.now() / 1000);
+  const role = input.role ?? "RESTRO";
 
   const payload: RestroSessionPayload = {
-    restroCode: input.restroCode,
+    role,
+    restroCode:
+      role === "UNIVERSAL_ADMIN" ? null : Number(input.restroCode),
     mobile: input.mobile,
     issuedAt: now,
     expiresAt: now + RESTRO_SESSION_MAX_AGE_SECONDS,
@@ -100,9 +107,17 @@ export function verifyRestroSessionToken(
       decodeBase64Url(encodedPayload),
     ) as RestroSessionPayload;
 
+    const role: RestroSessionRole =
+      payload.role === "UNIVERSAL_ADMIN"
+        ? "UNIVERSAL_ADMIN"
+        : "RESTRO";
+    const validRestroCode =
+      role === "UNIVERSAL_ADMIN" ||
+      (Number.isFinite(payload.restroCode) &&
+        Number(payload.restroCode) > 0);
+
     if (
-      !Number.isFinite(payload.restroCode) ||
-      payload.restroCode <= 0 ||
+      !validRestroCode ||
       !payload.mobile ||
       !Number.isFinite(payload.expiresAt) ||
       payload.expiresAt <= Math.floor(Date.now() / 1000)
@@ -110,7 +125,14 @@ export function verifyRestroSessionToken(
       return null;
     }
 
-    return payload;
+    return {
+      ...payload,
+      role,
+      restroCode:
+        role === "UNIVERSAL_ADMIN"
+          ? null
+          : Number(payload.restroCode),
+    };
   } catch {
     return null;
   }

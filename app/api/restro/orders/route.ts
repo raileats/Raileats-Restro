@@ -859,7 +859,7 @@ async function getOrderItemsForOrders({
 }: {
   supabase: any;
   orders: any[];
-  restroCode: number;
+  restroCode: number | null;
 }) {
   const orderIds = Array.from(
     new Set(
@@ -931,7 +931,7 @@ async function getOrderItemsForOrders({
   const menuByCode =
     new Map<string, any>();
 
-  if (itemCodes.length > 0) {
+  if (itemCodes.length > 0 && restroCode) {
     try {
       for (
         const itemCodeChunk of chunkArray(
@@ -1045,10 +1045,13 @@ export async function GET() {
       );
     }
 
+    const isUniversalAdmin =
+      session.role === "UNIVERSAL_ADMIN";
+
     const restroCode =
       getSessionRestroCode(session);
 
-    if (!restroCode) {
+    if (!isUniversalAdmin && !restroCode) {
       return NextResponse.json(
         {
           ok: false,
@@ -1064,23 +1067,26 @@ export async function GET() {
     const supabase =
       supabaseServer();
 
+    let ordersQuery =
+      supabase
+        .from("Orders")
+        .select("*")
+        .order("CreatedAt", {
+          ascending: false,
+        });
+
+    if (!isUniversalAdmin) {
+      ordersQuery =
+        ordersQuery.eq(
+          "RestroCode",
+          restroCode,
+        );
+    }
+
     const {
       data,
       error,
-    } =
-      await supabase
-        .from("Orders")
-        .select("*")
-        .eq(
-          "RestroCode",
-          restroCode,
-        )
-        .order(
-          "CreatedAt",
-          {
-            ascending: false,
-          },
-        );
+    } = await ordersQuery;
 
     if (error) {
       throw error;
@@ -1093,7 +1099,10 @@ export async function GET() {
       await getOrderItemsForOrders({
         supabase,
         orders: baseOrders,
-        restroCode,
+        restroCode:
+          isUniversalAdmin
+            ? null
+            : restroCode,
       });
 
     const orders =
@@ -1153,23 +1162,34 @@ export async function GET() {
         orders,
         restro: {
           RestroCode:
-            restroCode,
+            isUniversalAdmin
+              ? null
+              : restroCode,
 
           RestroName:
-            getRestroUserName(
-              session,
-              firstOrder,
-            ),
+            isUniversalAdmin
+              ? "Railway Eats Admin"
+              : getRestroUserName(
+                  session,
+                  firstOrder,
+                ),
 
           StationCode:
-            cleanText(
-              firstOrder?.StationCode,
-            ),
+            isUniversalAdmin
+              ? "ALL"
+              : cleanText(
+                  firstOrder?.StationCode,
+                ),
 
           StationName:
-            cleanText(
-              firstOrder?.StationName,
-            ),
+            isUniversalAdmin
+              ? "All India"
+              : cleanText(
+                  firstOrder?.StationName,
+                ),
+
+          Role:
+            session.role,
         },
       },
       {
@@ -1222,10 +1242,16 @@ async function handleRestroStatusUpdate(
       );
     }
 
-    const restroCode =
+    const isUniversalAdmin =
+      session.role === "UNIVERSAL_ADMIN";
+
+    const sessionRestroCode =
       getSessionRestroCode(session);
 
-    if (!restroCode) {
+    if (
+      !isUniversalAdmin &&
+      !sessionRestroCode
+    ) {
       return NextResponse.json(
         {
           ok: false,
@@ -1316,22 +1342,27 @@ async function handleRestroStatusUpdate(
     const supabase =
       supabaseServer();
 
-    const {
-      data: order,
-      error: orderError,
-    } =
-      await supabase
+    let orderQuery =
+      supabase
         .from("Orders")
         .select("*")
         .eq(
           "OrderId",
           orderId,
-        )
-        .eq(
+        );
+
+    if (!isUniversalAdmin) {
+      orderQuery =
+        orderQuery.eq(
           "RestroCode",
-          restroCode,
-        )
-        .maybeSingle();
+          sessionRestroCode,
+        );
+    }
+
+    const {
+      data: order,
+      error: orderError,
+    } = await orderQuery.maybeSingle();
 
     if (orderError) {
       throw orderError;
@@ -1346,6 +1377,24 @@ async function handleRestroStatusUpdate(
         },
         {
           status: 404,
+        },
+      );
+    }
+
+    const restroCode =
+      normalizeRestroCode(
+        order?.RestroCode,
+      );
+
+    if (!restroCode) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Order restaurant is not configured correctly",
+        },
+        {
+          status: 409,
         },
       );
     }

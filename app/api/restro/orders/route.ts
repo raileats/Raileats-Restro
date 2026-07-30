@@ -1187,6 +1187,64 @@ export async function GET() {
     const baseOrders =
       data || [];
 
+    const orderIds =
+      baseOrders
+        .map((order) =>
+          cleanText(order?.OrderId),
+        )
+        .filter(Boolean) as string[];
+
+    const verificationByOrderId =
+      new Map<string, any>();
+
+    if (
+      isUniversalAdmin &&
+      orderIds.length > 0
+    ) {
+      const chunkSize = 200;
+
+      for (
+        let index = 0;
+        index < orderIds.length;
+        index += chunkSize
+      ) {
+        const chunk =
+          orderIds.slice(
+            index,
+            index + chunkSize,
+          );
+
+        const {
+          data: journeyRows,
+          error: journeyError,
+        } =
+          await supabase
+            .from("OrderJourney")
+            .select(
+              "OrderId, InVerificationActionAtDate, InVerificationActionAtTime",
+            )
+            .in("OrderId", chunk);
+
+        if (journeyError) {
+          throw journeyError;
+        }
+
+        for (
+          const journey of journeyRows || []
+        ) {
+          const orderId =
+            cleanText(journey?.OrderId);
+
+          if (orderId) {
+            verificationByOrderId.set(
+              orderId,
+              journey,
+            );
+          }
+        }
+      }
+    }
+
     const itemsByOrderId =
       await getOrderItemsForOrders({
         supabase,
@@ -1217,6 +1275,12 @@ export async function GET() {
          */
         return {
           ...order,
+
+          ...(orderId
+            ? verificationByOrderId.get(
+                orderId,
+              ) || {}
+            : {}),
 
           MenuItems:
             menuItems,

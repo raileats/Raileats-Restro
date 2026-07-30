@@ -259,7 +259,17 @@ export default function OrdersPage() {
 
   /* ================= REALTIME NEW ORDER ================= */
   useEffect(() => {
-    if (!restro?.RestroCode) return;
+    if (!restro) return;
+
+    const isUniversalAdmin =
+      restro?.Role === "UNIVERSAL_ADMIN";
+
+    if (
+      !isUniversalAdmin &&
+      !restro?.RestroCode
+    ) {
+      return;
+    }
 
     const channel = supabase
       .channel("restro-live-orders")
@@ -273,7 +283,11 @@ export default function OrdersPage() {
         async (payload) => {
           const newData: any = payload.new;
 
-          if (Number(newData.RestroCode) !== Number(restro.RestroCode)) {
+          if (
+            !isUniversalAdmin &&
+            Number(newData.RestroCode) !==
+              Number(restro.RestroCode)
+          ) {
             return;
           }
 
@@ -918,6 +932,22 @@ export default function OrdersPage() {
                   {item.Status}
                 </span>
               </div>
+
+              {restro?.Role === "UNIVERSAL_ADMIN" && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-blue-400">
+                      Restaurant
+                    </p>
+                    <p className="truncate text-xs font-black text-blue-800">
+                      {item.RestroName || "Restaurant"}
+                    </p>
+                  </div>
+                  <span className="flex-shrink-0 rounded-lg bg-white px-2.5 py-1 text-[11px] font-black text-[#2f54eb] shadow-sm">
+                    ID: {item.RestroCode || "N/A"}
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between border-b border-dashed border-gray-100 pb-3">
                 <div className="min-w-0">

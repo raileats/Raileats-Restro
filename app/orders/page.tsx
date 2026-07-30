@@ -196,6 +196,7 @@ export default function OrdersPage() {
   const [newOrderCount, setNewOrderCount] = useState<number>(readStoredNewOrderCount);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const bookedAudioRef = useRef<HTMLAudioElement | null>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   
@@ -255,14 +256,26 @@ export default function OrdersPage() {
     audio.volume = 1;
     audioRef.current = audio;
 
+    const bookedAudio = new window.Audio("/sounds/booked-order.mp3");
+    bookedAudio.preload = "auto";
+    bookedAudio.volume = 1;
+    bookedAudioRef.current = bookedAudio;
+
     const unlockAudio = async () => {
       try {
-        if (!audioRef.current) return;
-        audioRef.current.muted = true;
-        await audioRef.current.play();
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.muted = false;
+        const sounds = [
+          audioRef.current,
+          bookedAudioRef.current,
+        ].filter(Boolean) as HTMLAudioElement[];
+
+        for (const sound of sounds) {
+          sound.muted = true;
+          await sound.play();
+          sound.pause();
+          sound.currentTime = 0;
+          sound.muted = false;
+        }
+
         console.log("RESTRO AUDIO READY");
       } catch (e) {
         console.log("RESTRO AUDIO BLOCKED", e);
@@ -280,6 +293,7 @@ export default function OrdersPage() {
       document.removeEventListener("touchstart", unlockAudio);
       document.removeEventListener("scroll", unlockAudio);
       audio.pause();
+      bookedAudio.pause();
     };
   }, []);
 
@@ -302,6 +316,59 @@ export default function OrdersPage() {
       .on(
         "postgres_changes",
         {
+          event: "INSERT",
+          schema: "public",
+          table: "Orders",
+        },
+        async (payload) => {
+          const newData: any = payload.new;
+
+          if (!isUniversalAdmin) {
+            return;
+          }
+
+          const status = String(newData.Status || "")
+            .toLowerCase()
+            .trim();
+
+          if (status !== "booked") {
+            return;
+          }
+
+          try {
+            if (bookedAudioRef.current) {
+              bookedAudioRef.current.pause();
+              bookedAudioRef.current.currentTime = 0;
+              bookedAudioRef.current.volume = 1;
+              await bookedAudioRef.current.play();
+            }
+          } catch (error) {
+            console.log("BOOKED ORDER SOUND FAILED", error);
+          }
+
+          try {
+            if ("vibrate" in window.navigator) {
+              window.navigator.vibrate([
+                1000, 180, 1000, 180, 1000, 180, 1400,
+              ]);
+            }
+          } catch (error) {
+            console.log("BOOKED ORDER VIBRATION FAILED", error);
+          }
+
+          showOrderNotification(
+            "Booked RailEats Order",
+            `${newData.OrderId || "New order"} - ${
+              newData.CustomerName || "Customer"
+            }`
+          );
+
+          loadData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "UPDATE",
           schema: "public",
           table: "Orders",
@@ -320,6 +387,42 @@ export default function OrdersPage() {
           const status = String(newData.Status || "")
             .toLowerCase()
             .trim();
+
+          if (
+            isUniversalAdmin &&
+            status === "booked"
+          ) {
+            try {
+              if (bookedAudioRef.current) {
+                bookedAudioRef.current.pause();
+                bookedAudioRef.current.currentTime = 0;
+                bookedAudioRef.current.volume = 1;
+                await bookedAudioRef.current.play();
+              }
+            } catch (error) {
+              console.log("BOOKED ORDER SOUND FAILED", error);
+            }
+
+            try {
+              if ("vibrate" in window.navigator) {
+                window.navigator.vibrate([
+                  1000, 180, 1000, 180, 1000, 180, 1400,
+                ]);
+              }
+            } catch (error) {
+              console.log("BOOKED ORDER VIBRATION FAILED", error);
+            }
+
+            showOrderNotification(
+              "Booked RailEats Order",
+              `${newData.OrderId || "New order"} - ${
+                newData.CustomerName || "Customer"
+              }`
+            );
+
+            loadData();
+            return;
+          }
 
           if (status !== "new order") {
             // Agar chalte web app par status change ho, toh view refresh ho jaye

@@ -75,6 +75,9 @@ function safeRestroData(
   row: any
 ) {
   return {
+    Role:
+      "RESTRO",
+
     RestroCode:
       row?.RestroCode,
 
@@ -115,6 +118,37 @@ function safeRestroData(
   };
 }
 
+function universalAdminData(
+  mobile: string
+) {
+  return {
+    Role:
+      "UNIVERSAL_ADMIN",
+    RestroCode:
+      null,
+    RestroName:
+      "Railway Eats Admin",
+    StationCode:
+      "ALL",
+    StationName:
+      "All India",
+    State:
+      null,
+    RestroLoginMobile:
+      cleanMobile(mobile),
+    RestroUserName:
+      "Railway Eats Admin",
+    OwnerName:
+      "Railway Eats Admin",
+    RestroDisplayPhoto:
+      null,
+    Email:
+      "support@raileats.in",
+    Address:
+      "Flat 2C, Third Floor, First Block, Mohali, Punjab 140603",
+  };
+}
+
 function noStoreHeaders() {
   return {
     "Cache-Control":
@@ -149,6 +183,30 @@ export async function GET() {
           status:
             401,
 
+          headers:
+            noStoreHeaders(),
+        }
+      );
+    }
+
+    if (
+      session.role ===
+      "UNIVERSAL_ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          ok:
+            true,
+          authenticated:
+            true,
+          restro:
+            universalAdminData(
+              session.mobile
+            ),
+        },
+        {
+          status:
+            200,
           headers:
             noStoreHeaders(),
         }

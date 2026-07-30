@@ -1,0 +1,30 @@
+RAILEATS RESTRO - UNIVERSAL ADMIN LOGIN (PHASE 1)
+
+Replace the included files at the same paths in the Restro portal repository.
+
+Add these Vercel Environment Variables for Production, Preview and Development:
+
+UNIVERSAL_ADMIN_MOBILE = 8799726485
+UNIVERSAL_ADMIN_PASSWORD = use the password provided separately
+
+Do not put the password in GitHub source code.
+
+After adding the variables, redeploy the Restro portal.
+
+This phase includes:
+- RESTRO and UNIVERSAL_ADMIN signed session roles
+- Universal Admin login through environment credentials
+- Universal Admin session verification without a fake RestroCode
+- Existing restaurant login/session compatibility
+- Shell support for the Universal Admin identity
+
+Build verification:
+- Next.js 16.2.6 production build passed
+- TypeScript passed
+
+Next phase:
+- All-India Orders
+- All-India RE RDS
+- Full Universal Admin navigation
+- Restaurant selector for Menu and Settings
+- Fixed Universal Admin Profile

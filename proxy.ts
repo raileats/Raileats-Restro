@@ -228,14 +228,19 @@ async function verifyToken(
         payloadText
       );
 
+    const validIdentity =
+      payload?.role ===
+        "UNIVERSAL_ADMIN" ||
+      (
+        Number.isFinite(
+          payload?.restroCode
+        ) &&
+        payload.restroCode >
+          0
+      );
+
     return (
-      Number.isFinite(
-        payload
-          ?.restroCode
-      ) &&
-      payload
-        .restroCode >
-        0 &&
+      validIdentity &&
       Number.isFinite(
         payload
           ?.expiresAt

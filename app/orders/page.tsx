@@ -117,6 +117,38 @@ function showOrderNotification(title: string, body: string) {
   }
 }
 
+const HARD_ORDER_VIBRATION_PATTERN = [
+  1400, 180, 1400, 180, 1400, 180, 1400, 180,
+  1400, 180, 1400, 180, 1400, 180,
+];
+
+function startHardOrderVibration(alertName: "BOOKED ORDER" | "NEW ORDER") {
+  if (
+    typeof window === "undefined" ||
+    !("vibrate" in window.navigator)
+  ) {
+    console.log(`${alertName} VIBRATION NOT SUPPORTED`);
+    return;
+  }
+
+  try {
+    // Purana vibration pattern stop karke naya 10+ second pattern
+    // turant start hota hai. Yeh audio/MP3 playback se independent hai.
+    window.navigator.vibrate(0);
+    const started = window.navigator.vibrate(
+      HARD_ORDER_VIBRATION_PATTERN
+    );
+
+    console.log(
+      started
+        ? `${alertName} VIBRATION STARTED`
+        : `${alertName} VIBRATION BLOCKED`
+    );
+  } catch (error) {
+    console.log(`${alertName} VIBRATION FAILED`, error);
+  }
+}
+
 function firstValue(source: any, keys: string[], fallback: any = null) {
   for (const key of keys) {
     const value = source?.[key];
@@ -335,6 +367,8 @@ export default function OrdersPage() {
             return;
           }
 
+          startHardOrderVibration("BOOKED ORDER");
+
           try {
             if (bookedAudioRef.current) {
               bookedAudioRef.current.pause();
@@ -344,17 +378,6 @@ export default function OrdersPage() {
             }
           } catch (error) {
             console.log("BOOKED ORDER SOUND FAILED", error);
-          }
-
-          try {
-            if ("vibrate" in window.navigator) {
-              window.navigator.vibrate([
-                1200, 150, 1200, 150, 1200, 150, 1200, 150,
-                1200, 150, 1200, 150, 1200, 150, 1200,
-              ]);
-            }
-          } catch (error) {
-            console.log("BOOKED ORDER VIBRATION FAILED", error);
           }
 
           showOrderNotification(
@@ -393,6 +416,8 @@ export default function OrdersPage() {
             isUniversalAdmin &&
             status === "booked"
           ) {
+            startHardOrderVibration("BOOKED ORDER");
+
             try {
               if (bookedAudioRef.current) {
                 bookedAudioRef.current.pause();
@@ -402,17 +427,6 @@ export default function OrdersPage() {
               }
             } catch (error) {
               console.log("BOOKED ORDER SOUND FAILED", error);
-            }
-
-            try {
-              if ("vibrate" in window.navigator) {
-                window.navigator.vibrate([
-                  1200, 150, 1200, 150, 1200, 150, 1200, 150,
-                  1200, 150, 1200, 150, 1200, 150, 1200,
-                ]);
-              }
-            } catch (error) {
-              console.log("BOOKED ORDER VIBRATION FAILED", error);
             }
 
             showOrderNotification(
@@ -440,6 +454,8 @@ export default function OrdersPage() {
             return updated;
           });
 
+          startHardOrderVibration("NEW ORDER");
+
           try {
             if (audioRef.current) {
               console.log("PLAYING RESTRO SOUND");
@@ -460,17 +476,6 @@ export default function OrdersPage() {
             }
           } catch (e) {
             console.log("RESTRO AUDIO ERROR", e);
-          }
-
-          try {
-            if ("vibrate" in window.navigator) {
-              window.navigator.vibrate([
-                1200, 150, 1200, 150, 1200, 150, 1200, 150,
-                1200, 150, 1200, 150, 1200, 150, 1200,
-              ]);
-            }
-          } catch (error) {
-            console.log("NEW ORDER VIBRATION FAILED", error);
           }
 
           showOrderNotification(

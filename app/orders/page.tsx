@@ -117,10 +117,26 @@ function showOrderNotification(title: string, body: string) {
   }
 }
 
-const HARD_ORDER_VIBRATION_PATTERN = [
-  1400, 180, 1400, 180, 1400, 180, 1400, 180,
-  1400, 180, 1400, 180, 1400, 180,
-];
+let hardVibrationInterval: number | null = null;
+let hardVibrationStopTimeout: number | null = null;
+
+function stopHardOrderVibration() {
+  if (typeof window === "undefined") return;
+
+  if (hardVibrationInterval !== null) {
+    window.clearInterval(hardVibrationInterval);
+    hardVibrationInterval = null;
+  }
+
+  if (hardVibrationStopTimeout !== null) {
+    window.clearTimeout(hardVibrationStopTimeout);
+    hardVibrationStopTimeout = null;
+  }
+
+  if ("vibrate" in window.navigator) {
+    window.navigator.vibrate(0);
+  }
+}
 
 function startHardOrderVibration(
   alertName: "BOOKED ORDER" | "NEW ORDER" | "IN VERIFICATION",
@@ -134,18 +150,32 @@ function startHardOrderVibration(
   }
 
   try {
-    // Purana vibration pattern stop karke naya 10+ second pattern
-    // turant start hota hai. Yeh audio/MP3 playback se independent hai.
-    window.navigator.vibrate(0);
-    const started = window.navigator.vibrate(
-      HARD_ORDER_VIBRATION_PATTERN
+    // Kuch Android browsers ek lamba vibration pattern ignore/cancel kar dete
+    // hain. Isliye 950ms ka strong pulse har 1.15 sec mein repeat hota hai.
+    // Yeh audio/MP3 playback se completely independent hai.
+    stopHardOrderVibration();
+
+    const vibratePulse = () => {
+      const started = window.navigator.vibrate(950);
+      console.log(
+        started
+          ? `${alertName} VIBRATION PULSE STARTED`
+          : `${alertName} VIBRATION PULSE BLOCKED`
+      );
+    };
+
+    vibratePulse();
+    hardVibrationInterval = window.setInterval(
+      vibratePulse,
+      1150,
     );
 
-    console.log(
-      started
-        ? `${alertName} VIBRATION STARTED`
-        : `${alertName} VIBRATION BLOCKED`
-    );
+    // Total alert duration ~11.5 seconds.
+    hardVibrationStopTimeout = window.setTimeout(() => {
+      stopHardOrderVibration();
+    }, 11500);
+
+    console.log(`${alertName} HARD VIBRATION STARTED`);
   } catch (error) {
     console.log(`${alertName} VIBRATION FAILED`, error);
   }
